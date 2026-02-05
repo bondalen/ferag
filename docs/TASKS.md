@@ -1,4 +1,4 @@
-# Задачи проекта graph-rag-lab
+# Задачи проекта ferag
 
 Задачи выведены из чата `26-0201_chat.txt`. Статус обновляется по мере выполнения.
 
@@ -31,7 +31,7 @@
 
 | ID | Задача | Статус | Примечание / чат |
 |----|--------|--------|------------------|
-| 2.1 | Установить WSL2, дистрибутив Ubuntu | [x] | Чат: база для graph-rag-lab |
+| 2.1 | Установить WSL2, дистрибутив Ubuntu | [x] | Чат: база для ferag |
 | 2.2 | Перенести WSL на диск D: (export/import, .wslconfig) | [x] | Чат: данные и диск не на C: |
 | 2.3 | Создать/настроить .wslconfig (лимит памяти для WSL), перезапуск WSL | [x] | Файл создан: C:\Users\Admin\.wslconfig; применить: wsl --shutdown |
 | 2.4 | Переименовать хост: Windows (например, AI-Station / NucBox-K8), WSL — nb-win (или ai-lab) | [x] | Чат: hostnamectl, /etc/hosts |
@@ -44,7 +44,7 @@
 |----|--------|--------|------------------|
 | 3.1 | Установить Ollama (Windows), скачать модель (напр. Llama 3.2) | [x] | Чат: проверка «первого ИИ» |
 | 3.2 | Установить Cursor, расширение WSL, подключиться к Ubuntu | [x] | Чат: WSL: Ubuntu в углу |
-| 3.3 | Открыть папку проекта в Cursor: `/home/alex/projects/graph-rag-lab` | [x] | Чат: File → Open Folder, путь в WSL |
+| 3.3 | Открыть папку проекта в Cursor: `/home/alex/projects/ferag` | [x] | Чат: File → Open Folder, путь в WSL |
 | 3.4 | Установить команду cursor/code в PATH (Shell Command: Install 'cursor' in PATH) | [x] | Чат: cursor --version, cursor hello |
 | 3.5 | Настроить Cursor: OpenAI-совместимый API → localhost:11434 (Ollama), модель llama3.2 | [x] | Чат: Settings → Models, Override Base URL |
 | 3.6 | Установить Cursor Agent CLI (Install CLI в предложении Cursor) | [x] | Чат: Installation Complete |
