@@ -1,0 +1,129 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Virtual environments
+.venv
+venv/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Cursor
+.cursor/
+.cursor-server/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Модели LLM (слишком большие для git)
+*.gguf
+*.safetensors
+*.bin
+*.pt
+*.pth
+models/
+weights/
+
+# Данные (могут быть большими)
+data/*.txt
+data/*.pdf
+data/*.docx
+data/raw/
+data/processed/
+
+# Графовые БД (дампы и данные)
+graphs/
+neo4j-data/
+falkordb-data/
+*.cypher
+*.rdf
+*.ttl
+
+# Docker volumes
+.docker/
+docker-data/
+
+# Логи
+*.log
+logs/
+
+# Временные файлы
+tmp/
+temp/
+*.tmp
+*.bak
+*.swp
+
+# Конфигурация (могут содержать пароли)
+.env
+.env.local
+secrets.yaml
+credentials.json
+
+# WSL (если случайно попадёт)
+*.vhdx
+
+# Ollama (модели уже на D:\AI_MODELS)
+ollama-models/
+
+# Векторные базы
+chroma/
+faiss/
+*.index
+
+# Результаты экспериментов
+experiments/
+results/
+outputs/
+
+# Большие архивы
+*.zip
+*.tar
+*.tar.gz
+*.rar
+*.7z
+
+# Кеш
+.cache/
+__pycache__/
+.pytest_cache/
+
+# Jupyter
+.jupyter/
+
+# Специфично для проекта
+# Оригинальный чат (слишком большой)
+# 26-0201_chat.txt - закомментировано, так как это важный исторический документ
