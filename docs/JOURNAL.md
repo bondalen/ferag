@@ -365,6 +365,84 @@
 
 ---
 
+## 2026-02-10 Mon (вечер) — Замена MillenniumDB на Apache Jena Fuseki
+
+**Событие:** В процессе установки MillenniumDB (задача 4.10, пункт 1.1 плана 26-0210-1500) обнаружено отсутствие готового Docker образа в Docker Hub. Проведён детальный анализ MillenniumDB vs Apache Jena Fuseki в контексте требований проекта ferag.
+
+**Критическая находка:**
+
+MillenniumDB **НЕ поддерживает OWL/RDFS inference** (логический вывод), что является критичным недостатком для проекта ferag, где онтология — ядро системы.
+
+**Примеры проблем без inference:**
+
+1. **Schema Induction (Этап 2):**
+   - LLM создаёт `Employee rdfs:subClassOf Person`
+   - Без inference нельзя автоматически вывести, что все `Employee` также являются `Person`
+   - Нужно вручную добавлять все транзитивные связи
+
+2. **Synthesis (Этап 3):**
+   - `owl:equivalentClass` не работает → нельзя объединить дубликаты классов
+   - `owl:sameAs` не работает → нельзя объединить дубликаты сущностей
+
+3. **Graph Validation (Этап 3):**
+   - `rdfs:domain` и `rdfs:range` не проверяются автоматически
+   - Нужны дополнительные скрипты для валидации
+
+**Решение:**
+
+Заменить MillenniumDB на **Apache Jena Fuseki** как источник истины для онтологии.
+
+**Обоснование выбора Apache Jena Fuseki:**
+
+**Критические преимущества:**
+- ✅ **Полная поддержка OWL reasoning:** OWLFBRuleReasoner, OWLMicroReasoner, OWLMiniReasoner
+- ✅ **Полная поддержка RDFS inference:** rdfs:subClassOf, rdfs:subPropertyOf, rdfs:domain, rdfs:range
+- ✅ **Production-ready:** 15+ лет разработки, Apache Software Foundation, используется в реальных проектах (BBC, DBpedia)
+- ✅ **Готовый Docker образ:** stain/jena-fuseki (запускается за 30 секунд)
+- ✅ **Веб-интерфейс:** http://localhost:3030 (SPARQL editor, управление datasets, monitoring)
+- ✅ **Большое сообщество:** обширная документация, активная поддержка
+
+**MillenniumDB отклонён из-за:**
+- ❌ **Нет OWL/RDFS inference** — критичный недостаток для Schema Induction и Synthesis
+- ❌ **"Still in development"** — не production-ready, риск багов и нестабильности
+- ❌ **Нет готового Docker образа** — нужно собирать из исходников (10-15 мин)
+
+**Дополнительные преимущества Fuseki:**
+- Интеграция с Python через SPARQLWrapper
+- Bulk import через tdbloader
+- SPARQL 1.1 Update (INSERT, DELETE)
+- Named graphs для разделения staging/production данных
+
+**Недостатки Fuseki (некритичны):**
+- ⚠️ Производительность на больших объёмах ниже MillenniumDB (но для 10K-100K триплетов достаточна)
+- ⚠️ Требует больше ОЗУ для inference (но 64 ГБ достаточно)
+
+**Обновлённые документы:**
+- **PROJECT.md:**
+  - Раздел 4.1 (Основные компоненты): MillenniumDB → Apache Jena Fuseki
+  - Раздел 5.3 (Иерархия знаний): обновлена диаграмма с "reasoning"
+  - Раздел 5.4 (Docker): переписана секция установки Fuseki (API, примеры)
+- **TASKS.md:**
+  - Задача 4.10: "Установить Apache Jena Fuseki (источник истины для онтологии с OWL reasoning)"
+  - Задачи 6.8, 6.11, 6.13, 6.17: обновлены для Fuseki API
+- **README.md:** секция "Базы данных" обновлена
+- **План 26-0210-1500_plan.md:** ФАЗА 1 переписана для Apache Jena Fuseki
+
+**Философия проекта:**
+
+Качество онтологии и формальная семантика важнее производительности. Apache Jena Fuseki обеспечивает:
+- Формальный логический вывод (inference) для автоматического обогащения онтологии
+- Валидацию триплетов через rdfs:domain/rdfs:range
+- Объединение онтологий через owl:equivalentClass
+
+Эти возможности критичны для реализации диалектического цикла проекта ferag (Тезис → Антитезис → Синтез).
+
+**Следующий шаг:**
+
+Выполнить пункт 1.1 плана: установка Apache Jena Fuseki в Docker (задача 4.10).
+
+---
+
 ## Шаблон записи для новых событий
 
 ```markdown

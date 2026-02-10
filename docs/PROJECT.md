@@ -107,7 +107,7 @@
 | **PostgreSQL 16** | Реляционная СУБД как основа multi-model решения (граф + реляционная + векторный поиск). |
 | **Apache AGE** | Графовое расширение PostgreSQL (Property Graph, Cypher). Рабочий кэш для быстрых запросов. |
 | **pgvector** | Расширение PostgreSQL для векторного поиска (эмбеддинги, семантический поиск для RAG). |
-| **MillenniumDB** | Property Graph + RDF + SPARQL. Источник истины для онтологии (OWL/RDF) и триплетов. |
+| **Apache Jena Fuseki** | RDF/SPARQL 1.1 сервер. Источник истины для онтологии (OWL/RDF) с полной поддержкой OWL reasoning и RDFS inference. |
 | **LlamaIndex** | Библиотека для RAG и Schema Induction (извлечение онтологии из триплетов). |
 | **LangChain** | Библиотека для построения RAG-пайплайнов и диалога с пользователем. |
 
@@ -251,10 +251,10 @@
   ↓
 Триплеты без онтологии (частичный порядок)
   ↓
-RDF/SPARQL + OWL онтология (MillenniumDB)
+RDF/SPARQL + OWL онтология (Apache Jena Fuseki + reasoning)
   ┃
   ┃ ← ВЕРШИНА СЕМАНТИЧЕСКОЙ ОРГАНИЗАЦИИ
-  ┃    (Источник истины: формальная семантика, inference)
+  ┃    (Источник истины: формальная семантика, OWL/RDFS inference)
   ┃
   ┗━━━ Ветвление на специализированные представления:
       │
@@ -272,7 +272,7 @@ RDF/SPARQL + OWL онтология (MillenniumDB)
 ```
 
 **Ключевой принцип:** 
-- **MillenniumDB (RDF/OWL)** — источник истины (single source of truth)
+- **Apache Jena Fuseki (RDF/OWL + reasoning)** — источник истины (single source of truth)
 - **PostgreSQL + AGE** — рабочий кэш для производительности
 - **Materialized Views** — представления для аналитики
 
@@ -330,25 +330,72 @@ SELECT create_graph('knowledge_graph');
 
 ---
 
-#### MillenniumDB (источник истины для онтологии)
+#### Apache Jena Fuseki (источник истины для онтологии)
 
 **Установка:**
 
 ```bash
-docker run -d --name millenniumdb \
-  -p 8080:8080 \
-  -v ~/projects/ferag/millenniumdb-data:/data \
-  millenniumdb/millenniumdb:latest
+docker run -d --name fuseki \
+  -p 3030:3030 \
+  -v ~/projects/ferag/fuseki-data:/fuseki \
+  -e ADMIN_PASSWORD=ferag2026 \
+  stain/jena-fuseki
 ```
 
-**SPARQL endpoint:** http://localhost:8080/sparql  
-**Поддержка:** Property Graph, RDF, SPARQL 1.1
+**Веб-интерфейс:** http://localhost:3030  
+**SPARQL endpoint:** http://localhost:3030/$/datasets  
+**Поддержка:** RDF, SPARQL 1.1, OWL reasoning, RDFS inference
 
 **Назначение:**
-- Хранение онтологии (OWL/RDF-схема)
+- Хранение онтологии (OWL/RDF-схема) с формальной семантикой
 - Хранение всех триплетов (RDF triple store)
-- SPARQL-запросы для inference
+- SPARQL-запросы с логическим выводом (inference)
 - Источник истины (single source of truth)
+
+**Ключевые возможности:**
+- **OWL reasoning:** OWLFBRuleReasoner, OWLMicroReasoner, OWLMiniReasoner
+- **RDFS inference:** rdfs:subClassOf, rdfs:subPropertyOf, rdfs:domain, rdfs:range
+- **Критично для проекта:** Schema Induction требует inference для иерархии классов, Synthesis требует owl:equivalentClass для объединения онтологий
+
+**Создание dataset:**
+
+```bash
+# Через веб-интерфейс: http://localhost:3030 → "Manage datasets" → "New dataset"
+# Или через API:
+curl -X POST http://localhost:3030/$/datasets \
+  -u admin:ferag2026 \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "dbName=ferag&dbType=tdb2"
+```
+
+**Загрузка RDF (Turtle формат):**
+
+```bash
+curl -X POST http://localhost:3030/ferag/data \
+  -u admin:ferag2026 \
+  -H "Content-Type: text/turtle" \
+  --data-binary @ontology.ttl
+```
+
+**SPARQL-запрос с inference:**
+
+```bash
+curl -X POST http://localhost:3030/ferag/sparql \
+  -H "Accept: application/sparql-results+json" \
+  -H "Content-Type: application/sparql-query" \
+  --data-binary "SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 10"
+```
+
+**Пример inference:**
+
+```sparql
+# Если в онтологии есть:
+:Employee rdfs:subClassOf :Person .
+:Alice rdf:type :Employee .
+
+# То Fuseki автоматически выведет:
+:Alice rdf:type :Person .  # ← inference!
+```
 
 ---
 

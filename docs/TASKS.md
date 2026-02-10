@@ -64,7 +64,7 @@
 | 4.7 | Изучить основы Cypher в Apache AGE | [ ] | Документация: https://age.apache.org/age-manual/master/intro/cypher.html |
 | 4.8 | Создать тестовые узлы и рёбра (проверка работы AGE) | [ ] | Cypher: CREATE (p:Person)-[:KNOWS]->(p2:Person) |
 | 4.9 | Протестировать pgvector: создать таблицу с эмбеддингами, векторный поиск | [ ] | CREATE TABLE test (embedding vector(1536)); поиск по cosine |
-| 4.10 | Установить MillenniumDB (источник истины для онтологии) | [ ] | PROJECT.md, разд. 5.4; опционально для Этапа 2 |
+| 4.10 | Установить Apache Jena Fuseki (источник истины для онтологии с OWL reasoning) | [ ] | PROJECT.md, разд. 5.4; критично для Schema Induction |
 
 ---
 
@@ -95,7 +95,7 @@
 | 6.5 | Подготовить тестовый корпус текстов (10-20 документов) | [ ] | data/raw/: научные статьи, документация, диалоги |
 | 6.6 | Запустить первую индексацию MS GraphRAG | [ ] | `graphrag index --root ~/projects/ferag`; 20-40 мин на 10-20 док |
 | 6.7 | Изучить результаты: entities, relationships, communities | [ ] | data/graphrag/output/*.parquet: анализ структуры |
-| 6.8 | Загрузить триплеты из MS GraphRAG в MillenniumDB (staging) | [ ] | Python: relationships.parquet → RDF → MillenniumDB <staging_triplets> |
+| 6.8 | Загрузить триплеты из MS GraphRAG в Apache Jena Fuseki (staging dataset) | [ ] | Python: relationships.parquet → RDF (Turtle) → Fuseki /ferag-staging |
 
 ### Schema Induction (Антитезис: извлечение онтологии)
 
@@ -103,18 +103,18 @@
 |----|--------|--------|------------|
 | 6.9 | Реализовать скрипт Schema Induction (LLM + communities) | [ ] | src/schema_induction/extractor.py: анализ триплетов + communities → OWL |
 | 6.10 | Запустить Schema Induction на тестовых данных | [ ] | Llama 3.3 70B Q4_K_M, 2-4 часа; результат: ontology.owl |
-| 6.11 | Сохранить извлечённую онтологию в MillenniumDB | [ ] | MillenniumDB: граф <new_ontology> |
+| 6.11 | Сохранить извлечённую онтологию в Apache Jena Fuseki | [ ] | Fuseki: dataset /ferag-ontology (OWL/RDF с reasoning) |
 | 6.12 | Визуализировать онтологию в WebProtégé | [ ] | Экспорт RDF → импорт в https://webprotege.stanford.edu/ |
 
 ### Синтез (интеграция знаний)
 
 | ID | Задача | Статус | Примечание |
 |----|--------|--------|------------|
-| 6.13 | Реализовать сравнение онтологий (SPARQL) | [ ] | src/synthesis/comparator.py: новые классы, свойства |
+| 6.13 | Реализовать сравнение онтологий (SPARQL + inference) | [ ] | src/synthesis/comparator.py: новые классы, свойства (с использованием rdfs:subClassOf inference) |
 | 6.14 | Реализовать классификацию триплетов (ламинарные/турбулентные) | [ ] | src/synthesis/classifier.py: валидация по онтологии |
 | 6.15 | Реализовать очистку аномалий (Graph Validation) | [ ] | SPARQL: поиск нарушений domain/range, удаление |
 | 6.16 | Реализовать синтез интегрированной онтологии | [ ] | src/synthesis/integrator.py: merge онтологий |
-| 6.17 | Обновить production DB (MillenniumDB) | [ ] | <ontology_graph> + <knowledge_graph> ← интегрированная онтология + все триплеты |
+| 6.17 | Обновить production DB (Apache Jena Fuseki) | [ ] | /ferag-prod dataset ← интегрированная онтология + все триплеты (с активным reasoning) |
 
 ### Проекции и эксплуатация
 

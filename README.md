@@ -37,7 +37,7 @@
 
 ### Базы данных
 - **PostgreSQL 16** + **Apache AGE** + **pgvector** — рабочая БД (Property Graph + векторный поиск + реляционные данные)
-- **MillenniumDB** — источник истины (RDF/SPARQL + OWL онтология)
+- **Apache Jena Fuseki** — источник истины (RDF/SPARQL 1.1 + OWL reasoning + RDFS inference)
 
 ### GraphRAG и онтология
 - **MS GraphRAG** — индексация текстов, извлечение триплетов с community detection
