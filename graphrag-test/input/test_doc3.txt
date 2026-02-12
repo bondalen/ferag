@@ -1,0 +1,11 @@
+The GraphRAG project represents a significant advancement in retrieval-augmented generation technology. Traditional RAG systems rely primarily on vector similarity search, which can miss important contextual relationships between entities. GraphRAG addresses this limitation by constructing a knowledge graph that captures entities, relationships, and hierarchical structures.
+
+The system architecture consists of five main stages based on a dialectical cycle. In the Thesis stage, Microsoft GraphRAG processes raw text documents using large language models like Llama 3.3 70B to extract entities and relationships. The extraction process includes entity resolution to merge duplicates and community detection to identify clusters of related information.
+
+In the Antithesis stage, the system performs Schema Induction using LlamaIndex and Ollama. This process analyzes the extracted triplets and communities to automatically generate an OWL ontology. The ontology includes class definitions, property definitions, hierarchical relationships using rdfs:subClassOf, and domain/range constraints using rdfs:domain and rdfs:range.
+
+The Synthesis stage compares the newly extracted ontology with the existing knowledge structure stored in Apache Jena Fuseki. The system classifies triplets as either laminar (fitting the existing ontology) or turbulent (requiring ontology modification). Graph validation is performed using SPARQL queries to identify anomalies and violations of ontological constraints.
+
+In the Projections stage, the RDF data from Apache Jena Fuseki is synchronized to PostgreSQL with Apache AGE for faster querying using Cypher. Vector embeddings are created using pgvector for semantic search. Materialized views provide relational projections for analytics and reporting.
+
+Finally, in the Exploitation stage, the system provides a hybrid retrieval mechanism combining vector search (pgvector), graph traversal (Apache AGE Cypher), and relational analytics (PostgreSQL SQL) to answer user queries. This multi-modal approach ensures comprehensive and accurate responses based on the accumulated knowledge.

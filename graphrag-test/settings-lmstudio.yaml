@@ -1,0 +1,52 @@
+# GraphRAG Configuration для LM Studio (DirectML)
+# Обновлено: 11 февраля 2026
+
+llm:
+  model_provider: openai  # LM Studio совместим с OpenAI API
+  api_key: lm-studio  # Любое значение (LM Studio не требует ключ)
+  api_base: http://10.7.0.3:1234/v1  # LM Studio Local Server endpoint (Windows)
+  
+  default_chat_model:
+    model: llama-3.3-70b-instruct-q4_k_m  # Имя модели в LM Studio
+    temperature: 0.0
+    top_p: 1.0
+    request_timeout: 1800  # 30 минут (для CPU/DirectML)
+    max_retries: 3
+    max_tokens: 4000
+    
+  default_embedding_model:
+    model: nomic-embed-text  # Embeddings через Ollama (быстрые)
+    api_base: http://localhost:11434/v1  # Ollama для embeddings
+    api_key: ollama
+    request_timeout: 600
+    max_retries: 3
+
+embedding:
+  enabled: true
+  
+input:
+  type: file
+  file_type: text
+  base_dir: input
+  file_pattern: ".*\\.txt$"
+  
+output:
+  base_dir: output
+  
+cache:
+  base_dir: cache
+  
+workflows:
+  extract_graph:
+    enabled: true
+  
+  summarize_descriptions:
+    enabled: true
+    
+  create_community_reports:
+    enabled: true
+    
+  generate_text_embeddings:
+    enabled: true
+
+# Остальные настройки по умолчанию

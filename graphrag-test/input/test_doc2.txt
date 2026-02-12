@@ -1,0 +1,9 @@
+Bob Johnson is a data scientist and semantic web specialist currently working at TechCorp. He previously worked at ACME Corporation from 2018 to 2023, where he collaborated with Alice Smith on the GraphRAG project. Bob holds a PhD in Computer Science from Stanford University with a focus on ontology engineering and knowledge representation.
+
+TechCorp is a competitor of ACME Corporation in the artificial intelligence market. Founded in 2015 in Seattle, Washington, TechCorp focuses on enterprise AI solutions and employs approximately 300 people. The company is known for its work in natural language understanding and knowledge graph construction.
+
+During his time at ACME Corporation, Bob developed several key components of the GraphRAG system, including the entity resolution module and the community detection algorithm. His background in semantic web technologies proved invaluable for implementing SPARQL queries and OWL reasoning in the Apache Jena Fuseki database.
+
+Bob's doctoral research at Stanford University focused on automated ontology extraction from text, also known as schema induction. This research became the foundation for the Schema Induction component in the GraphRAG system. The approach uses large language models to analyze extracted triplets and communities to automatically generate OWL ontologies with class hierarchies and property definitions.
+
+After leaving ACME Corporation, Bob joined TechCorp in August 2023 as the head of their Knowledge Engineering division. He continues to collaborate with Alice on open-source contributions to the GraphRAG ecosystem and regularly presents at conferences on semantic web technologies and knowledge graphs.

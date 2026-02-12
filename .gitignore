@@ -30,6 +30,7 @@ wheels/
 # Virtual environments
 .venv
 venv/
+venv-graphrag/
 ENV/
 
 # IDEs
@@ -103,6 +104,8 @@ ollama-models/
 chroma/
 faiss/
 *.index
+graphrag-test/output/lancedb/
+graphrag-test/results-comparison/
 
 # Результаты экспериментов
 experiments/
@@ -120,6 +123,7 @@ outputs/
 .cache/
 __pycache__/
 .pytest_cache/
+graphrag-test/cache/
 
 # Jupyter
 .jupyter/
