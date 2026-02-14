@@ -1,0 +1,57 @@
+=== Проверка полного цикла (4.6) — ferag-prod ===
+
+1. Триплетов в графе: 756
+
+2. Классов (owl:Class): 15
+   - City
+   - Company
+   - Consortium
+   - Country
+   - Event
+   - GEO
+   - Organization
+   - Person
+   - Program
+   - Project
+   - System
+   - Team
+   - Technology
+   - University
+   - Workshop
+
+3. Объектных свойств (owl:ObjectProperty): 45
+
+4. Связей rdfs:subClassOf (схема): 11
+   - City -> GEO
+   - Company -> Organization
+   - Consortium -> Organization
+   - Country -> GEO
+   - Program -> Event
+   - Project -> Event
+   - System -> Project
+   - Team -> Organization
+   - Technology -> Project
+   - University -> Organization
+   - Workshop -> Event
+
+5. Примеры сущностей (ferag#, тип Person/Organization/Event/Location): 15
+   - CALIFORNIA (тип Location)
+   - WASHINGTON (тип Location)
+   - GERMANY (тип Location)
+   - SEATTLE (тип Location)
+   - LONDON (тип Location)
+   - NEW_YORK (тип Location)
+   - SAN_FRANCISCO (тип Location)
+   - BERLIN (тип Location)
+   - 2023 (тип Event)
+   - 2024 (тип Event)
+
+6. Примеры связей (Relationship): выборка 5
+   - TECHCORP -> SEATTLE  (TechCorp was founded in Seattle, Washington...)
+   - GRAPHRAG -> APACHE_JENA_FUSEKI  (The GraphRAG system uses Apache Jena Fuseki as a k...)
+   - BOB_JOHNSON -> APACHE_JENA_FUSEKI  (Bob Johnson implemented SPARQL queries and OWL rea...)
+   - ALICE_SMITH -> ACME_CORPORATION  (Alice Smith works at ACME Corporation as a senior ...)
+   - GRAPHRAG -> OLLAMA  (The GraphRAG system uses Ollama for schema inducti...)
+
+Вывод: классы и свойства онтологии на месте, триплеты данных присутствуют,
+иерархия rdfs:subClassOf сохранена. Рабочий процесс вчерне готов.

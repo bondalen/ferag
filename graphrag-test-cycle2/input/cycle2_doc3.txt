@@ -1,0 +1,7 @@
+The FERAG Consortium was established in November 2025 to steward the open-source FERAG methodology and to fund the FERAG Workshop series. Founding members include ACME Corporation, TechCorp, and Stanford University. The consortium is governed by a steering committee and funds development of shared ontology libraries and tooling.
+
+FERAG Workshop 2026 is scheduled for March 2026. The event will feature presentations on dialectical knowledge synthesis, schema induction at scale, and the transition from GraphRAG to Knowledge Fusion. Carol Davis will present on entity resolution improvements; Alice Smith and Bob Johnson will co-present on ontology merging strategies.
+
+DataCorp, prior to its acquisition by ACME, developed the Neo4j-based graph layer that was evaluated alongside Apache AGE in early FERAG prototypes. The production FERAG stack currently uses Apache Jena Fuseki for RDF and Apache AGE for property graphs; Neo4j is retained as an optional backend for organizations that standardize on it.
+
+Products built on FERAG include ACME's internal Knowledge Fusion platform and TechCorp's enterprise offering "TechGraph AI". Both products implement the same core ontology and triplet exchange format defined by the FERAG Consortium.

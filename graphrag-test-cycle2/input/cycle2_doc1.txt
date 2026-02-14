@@ -1,0 +1,7 @@
+Alice Smith was promoted to VP of AI at ACME Corporation in June 2025, having previously served as senior software engineer and lead of the Knowledge Graph team. She now oversees all AI initiatives including the successor to the original GraphRAG project.
+
+The original GraphRAG pilot project was formally concluded in December 2025. Its outcomes were merged into the broader Knowledge Fusion program, which ACME launched in January 2026. Knowledge Fusion extends the dialectical approach with multi-source reasoning and is developed by a new core team; Bob Johnson's direct involvement in day-to-day design ended when he left for TechCorp in 2023.
+
+Alice mentors Carol Davis, a data engineer who joined ACME in March 2025. Carol reports to Alice and works on the entity extraction pipeline for Knowledge Fusion. Carol Davis holds a degree in Machine Learning from MIT and previously worked at DataCorp, a startup specializing in knowledge graph infrastructure. DataCorp was acquired by ACME in late 2024.
+
+ACME Corporation opened a fourth office in Berlin, Germany in September 2025, in addition to its locations in San Francisco, New York, and London. The Berlin office focuses on European partnerships and ontology standardization efforts.

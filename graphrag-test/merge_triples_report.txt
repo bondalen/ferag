@@ -1,0 +1,12 @@
+=== Отчёт слияния массивов триплетов (4.4) ===
+Вход 1: /home/alex/projects/ferag/graphrag-test/graphrag_output.ttl  (триплетов: 301)
+Вход 2: /home/alex/projects/ferag/graphrag-test/../graphrag-test-cycle2/graphrag_output_cycle2.ttl  (триплетов: 320)
+Выход:  /home/alex/projects/ferag/graphrag-test/integrated_triples.ttl  (триплетов: 595)
+
+Дедупликация: одинаковые (s, p, o) учитываются один раз.
+Коллизии (s, ferag:description, o): оставлено описание из цикла 2.
+Связи (Relationship) с одинаковыми from, to, description объединены в одну.
+
+Добавлено триплетов из цикла 2 (без точных дубликатов): 272
+Пропущено точных дубликатов при добавлении из g2: 48
+Дубликатов связей по (from, to, description) удалено: 0

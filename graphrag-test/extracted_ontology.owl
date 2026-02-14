@@ -1,0 +1,51 @@
+@prefix : <http://example.org/ferag/schema#> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+:Person a owl:Class .
+:Organization a owl:Class .
+:Location a owl:Class .
+:Event a owl:Class .
+:Project a owl:Class .
+:Technology a owl:Class .
+:Company a owl:Class .
+
+:Company rdfs:subClassOf :Organization .
+:Project rdfs:subClassOf :Event .
+
+:worksAt a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Organization .
+
+:collaboratesWith a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Person .
+
+:leads a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Project .
+
+:contributesTo a owl:ObjectProperty ;
+    rdfs:domain :Person ;
+    rdfs:range :Project .
+
+:operatesIn a owl:ObjectProperty ;
+    rdfs:domain :Organization ;
+    rdfs:range :Location .
+
+:develops a owl:ObjectProperty ;
+    rdfs:domain :Organization ;
+    rdfs:range :Project .
+
+:uses a owl:ObjectProperty ;
+    rdfs:domain :Project ;
+    rdfs:range :Technology .
+
+:competesWith a owl:ObjectProperty ;
+    rdfs:domain :Company ;
+    rdfs:range :Company .
+
+:initializedIn a owl:ObjectProperty ;
+    rdfs:domain :Project ;
+    rdfs:range :Event .

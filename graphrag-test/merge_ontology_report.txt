@@ -1,0 +1,16 @@
+=== Отчёт слияния онтологий (4.3) ===
+Онтология 1: /home/alex/projects/ferag/graphrag-test/extracted_ontology_full.ttl
+Онтология 2: /home/alex/projects/ferag/graphrag-test/../graphrag-test-cycle2/extracted_ontology_cycle2.ttl
+Результат:   /home/alex/projects/ferag/graphrag-test/integrated_ontology.ttl
+
+Классы только в цикле 1: System, Team, Technology
+Классы только в цикле 2: Consortium, Program, Workshop
+Классы в обоих: 9
+
+Свойства только в цикле 1: collaboratedWith, competesWith, contributesTo, developedBy, earnedPhDFrom, foundedIn, initiatedIn, isHeadOf, isSpecialistIn, joined, leads, operatesIn, operatesInMarket, uses, usesForEntityExtraction, usesForGraphTraversal, usesForGraphValidation, usesForRelationalAnalytics, usesForSchemaInduction, usesForSemanticSearch, usesForVectorEmbeddings, worksAt, worksAtCompany
+Свойства только в цикле 2: acquired, coPresentingAt, concludedIn, developed, employs, foundingMemberOf, hasOfficeIn, involvedIn, launched, locatedIn, mentors, mergedInto, organizing, oversees, partnerOf, presentingAt, promotedTo, researchPartnerOf, supersededBy, usedInProductionStack, usesForInference, worksOn
+Свойства в обоих: 0
+
+Триплетов в онтологии 1: 89
+Триплетов в онтологии 2: 86
+Триплетов в результирующей: 161

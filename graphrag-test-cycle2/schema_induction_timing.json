@@ -1,0 +1,9 @@
+{
+  "wall_clock_seconds": 1308.24,
+  "entities_count": 35,
+  "triplets_count": 50,
+  "communities_count": 9,
+  "prompt_chars": 14744,
+  "output_chars": 2648,
+  "output_tokens": 4055
+}

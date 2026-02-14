@@ -1,0 +1,7 @@
+Bob Johnson left TechCorp in April 2025 and rejoined ACME Corporation as Principal Scientist in May 2025. He no longer heads any division at TechCorp; TechCorp disbanded its Knowledge Engineering division in March 2025 as part of a restructuring. Bob's role at ACME is to advance the theoretical foundations of the Knowledge Fusion system and to lead schema integration research.
+
+The former competitive relationship between TechCorp and ACME in the AI market has shifted. In November 2025, ACME and TechCorp announced a partnership to co-develop open standards for knowledge graph interchange. The joint initiative is named the FERAG Consortium, after the FERAG project that originated the dialectical RAG methodology.
+
+The GraphRAG system referenced in earlier ACME documentation has been superseded by the open-source project now called FERAG. FERAG uses LM Studio and DirectML for inference where the original documentation mentioned Ollama. Schema Induction in FERAG is performed via LlamaIndex calling the same LM endpoint; the Ollama-based setup is deprecated.
+
+Bob Johnson participates in the FERAG Workshop 2026, an annual event funded by the FERAG Consortium. Stanford University remains a research partner; Bob's PhD work on schema induction continues to be cited in FERAG technical reports.
