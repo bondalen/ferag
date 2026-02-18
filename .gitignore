@@ -40,8 +40,9 @@ ENV/
 *.swo
 *~
 
-# Cursor
+# Cursor (правила в .cursor/rules/ коммитим)
 .cursor/
+!.cursor/rules/
 .cursor-server/
 
 # OS

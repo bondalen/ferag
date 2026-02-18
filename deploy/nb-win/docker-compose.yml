@@ -1,0 +1,69 @@
+version: '3.8'
+
+# nb-win: 3 постоянных контейнера (postgres, fuseki, worker)
+# LM Studio на Windows (не в Docker) — порт 41234
+# PostgreSQL слушает на WireGuard IP 10.7.0.3:45432
+# Fuseki слушает только внутри Docker-сети (порт 43030)
+
+services:
+  # 1. PostgreSQL (2 БД: ferag_app + ferag_projections с AGE + pgvector)
+  postgres:
+    image: postgres:16
+    container_name: ferag-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=ferag
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    ports:
+      - "10.7.0.3:45432:5432"   # Внутренний 5432 → внешний 45432 на WireGuard IP
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
+    networks:
+      - ferag-network
+
+  # 2. Apache Jena Fuseki (RDF/SPARQL — источник истины)
+  fuseki:
+    image: stain/jena-fuseki:latest
+    container_name: ferag-fuseki
+    restart: unless-stopped
+    environment:
+      - ADMIN_PASSWORD=${FUSEKI_PASSWORD}
+      - JVM_ARGS=-Xmx8g
+    ports:
+      - "127.0.0.1:43030:3030"  # Только localhost nb-win (worker обращается внутри Docker-сети)
+    volumes:
+      - fuseki-data:/fuseki
+    networks:
+      - ferag-network
+
+  # 3. Celery Worker (GraphRAG + RAG задачи)
+  worker:
+    build:
+      context: ../../worker
+      dockerfile: Dockerfile
+    container_name: ferag-worker
+    restart: unless-stopped
+    environment:
+      - CELERY_BROKER_URL=redis://10.7.0.1:47379/0         # Redis на cr-ubu (WireGuard)
+      - DATABASE_URL=postgresql://ferag:${DB_PASSWORD}@postgres:5432/ferag_app  # Внутри Docker-сети
+      - FUSEKI_URL=http://fuseki:3030                       # Внутри Docker-сети
+      - LLM_API_URL=http://host.docker.internal:41234/v1   # LM Studio на Windows
+    volumes:
+      - ../../graphrag-test:/app/graphrag-test
+      - ../../worker:/app/worker
+    extra_hosts:
+      - "host.docker.internal:host-gateway"  # Доступ к LM Studio на Windows
+    depends_on:
+      - postgres
+      - fuseki
+    networks:
+      - ferag-network
+
+volumes:
+  postgres-data:
+  fuseki-data:
+
+networks:
+  ferag-network:
+    driver: bridge
