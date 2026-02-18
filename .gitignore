@@ -45,6 +45,9 @@ ENV/
 !.cursor/rules/
 .cursor-server/
 
+# SSH (ключи и конфиги)
+.ssh/
+
 # OS
 .DS_Store
 Thumbs.db
