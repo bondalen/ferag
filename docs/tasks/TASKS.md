@@ -155,16 +155,16 @@
 
 | ID | Задача | Статус | Примечание |
 |----|--------|--------|------------|
-| 9.1 | Реализовать `backend/` — FastAPI (auth, CRUD, WebSocket) | [ ] | JWT-аутентификация, роуты /auth, /rags, /upload, /chat, /tasks; слушать на 0.0.0.0:47821 |
-| 9.2 | Написать `backend/Dockerfile` — FastAPI + Redis + supervisord в одном образе | [ ] | python:3.11-slim, apt redis-server supervisor, supervisord.conf; PROJECT-004.md разд. 8 |
-| 9.3 | Реализовать `worker/` — Celery (GraphRAG + RAG задачи) | [ ] | Брокер: redis://10.7.0.1:47379/0; задачи: build_graph, run_rag; доступ к Fuseki и PostgreSQL |
-| 9.4 | Написать `worker/Dockerfile` | [ ] | Включить graphrag-test/ зависимости; host.docker.internal для LM Studio :41234 |
-| 9.5 | Реализовать `frontend/` — Vue 3 SPA | [ ] | Vite: base '/ferag/'; страницы: login, список RAG, загрузка файлов, диалог, приглашения |
+| 9.1 | Реализовать `code/backend/` — FastAPI (auth, CRUD, WebSocket) | [ ] | JWT-аутентификация, роуты /auth, /rags, /upload, /chat, /tasks; слушать на 0.0.0.0:47821 |
+| 9.2 | Написать `code/backend/Dockerfile` — FastAPI + Redis + supervisord в одном образе | [ ] | python:3.11-slim, apt redis-server supervisor, supervisord.conf; PROJECT-004.md разд. 8 |
+| 9.3 | Реализовать `code/worker/` — Celery (GraphRAG + RAG задачи) | [ ] | Брокер: redis://10.7.0.1:47379/0; задачи: build_graph, run_rag; доступ к Fuseki и PostgreSQL |
+| 9.4 | Написать `code/worker/Dockerfile` | [ ] | Включить graphrag-test/ зависимости; host.docker.internal для LM Studio :41234 |
+| 9.5 | Реализовать `code/frontend/` — Vue 3 SPA | [ ] | Vite: base '/ferag/'; страницы: login, список RAG, загрузка файлов, диалог, приглашения |
 | 9.6 | Дополнить `deploy/nb-win/init-db.sh` — расширения AGE и pgvector | [ ] | CREATE EXTENSION age, vector; LOAD 'age'; SELECT create_graph('knowledge_graph') |
 | 9.7 | Собрать Vue и разложить в `/var/www/ferag/` на cr-ubu | [ ] | npm run build → scp/rsync dist/* на cr-ubu; права www-data |
 | 9.8 | Настроить Nginx на cr-ubu | [ ] | sudo cp deploy/cr-ubu/nginx-location-ferag.conf /etc/nginx/snippets/ferag.conf; include в vhost |
 | 9.9 | Первый сквозной запуск и проверка | [ ] | login → создать RAG → загрузить файл → вопрос → LLM-ответ |
-| 9.10 | (опц.) CI/CD | [ ] | GitHub Actions или аналог: build + deploy frontend, docker-compose up --build backend |
+| 9.10 | (опц.) CI/CD | [ ] | GitHub Actions или аналог: build + deploy code/frontend, docker-compose up --build code/backend |
 
 ---
 

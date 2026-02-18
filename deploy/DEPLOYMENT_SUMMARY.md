@@ -246,11 +246,11 @@ docker-compose up -d worker
 
 ## Что ещё нужно реализовать (не сделано)
 
-- [ ] `backend/` — FastAPI приложение (auth, CRUD, WebSocket)
-- [ ] `backend/Dockerfile` — FastAPI + Redis + supervisord в одном образе
-- [ ] `worker/` — Celery приложение (GraphRAG + RAG задачи)
-- [ ] `worker/Dockerfile`
-- [ ] `frontend/` — Vue приложение
+- [ ] `code/backend/` — FastAPI приложение (auth, CRUD, WebSocket)
+- [ ] `code/backend/Dockerfile` — FastAPI + Redis + supervisord в одном образе
+- [ ] `code/worker/` — Celery приложение (GraphRAG + RAG задачи)
+- [ ] `code/worker/Dockerfile`
+- [ ] `code/frontend/` — Vue приложение
 - [ ] Сборка и деплой Vue → `/var/www/ferag/` на cr-ubu
 - [ ] Инициализация PostgreSQL расширений (AGE, pgvector) — `nb-win/init-db.sh` дополнить
 - [ ] CI/CD (опционально)
