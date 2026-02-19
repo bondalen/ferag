@@ -1,5 +1,6 @@
 """Настройки приложения из переменных окружения (.env)."""
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -20,6 +21,13 @@ class Settings(BaseSettings):
     fuseki_url: str
     fuseki_user: str
     fuseki_password: str
+    # Базовый каталог рабочих файлов (должен совпадать с worker для upload → chain)
+    work_dir: Path = Path("/tmp/ferag")
+    # Redis (pub/sub для WebSocket статусов задач; тот же инстанс, что и Celery broker)
+    redis_url: str = "redis://localhost:6379/0"
+    # LLM для RAG-чата (LM Studio или OpenAI-совместимый)
+    llm_api_url: str = "http://host.docker.internal:41234/v1"
+    llm_model: str = "lmstudio-community/Meta-Llama-3.3-70B-Instruct-UDLQ4_K_M"
 
 
 @lru_cache

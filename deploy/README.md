@@ -50,6 +50,15 @@ deploy/
 
 ---
 
+## Требования для upload (POST /rags/{id}/upload)
+
+- **Импорт worker:** при локальном запуске backend в `PYTHONPATH` должен быть каталог `code/` (например: `PYTHONPATH=/path/to/ferag/code uv run uvicorn app.main:app ...`), чтобы backend мог вызвать `start_update_chain` из пакета `worker.tasks`.
+- **Общий work_dir:** backend и worker должны использовать один и тот же каталог для рабочих файлов (по умолчанию `/tmp/ferag`). В Docker — один volume с одним путём у обоих контейнеров (например, `WORK_DIR=/app/ferag_work`, volume `ferag_work:/app/ferag_work`).
+
+Подробнее: [DEPLOYMENT_SUMMARY.md](DEPLOYMENT_SUMMARY.md#требования-к-окружению-backend-для-эндпоинта-upload), [docs/project/PROJECT-004.md](../docs/project/PROJECT-004.md) (раздел 8.1).
+
+---
+
 ## Порядок запуска (чтобы приложение было доступно в браузере)
 
 1. **nb-win:** поднять PostgreSQL и Fuseki → `docker-compose up -d postgres fuseki` (или сразу `docker-compose up -d`).

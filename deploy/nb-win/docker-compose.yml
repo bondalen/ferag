@@ -50,10 +50,11 @@ services:
       - FUSEKI_URL=http://fuseki:3030
       - FUSEKI_USER=admin
       - FUSEKI_PASSWORD=${FUSEKI_PASSWORD}
-      - LLM_API_URL=http://host.docker.internal:41234/v1
+      - LLM_API_URL=http://host.docker.internal:1234/v1
     volumes:
       - ../../graphrag-test:/app/graphrag-test
       - ../../code/worker:/app/worker
+      - /tmp/ferag:/tmp/ferag   # shared work dir с backend (хост WSL2)
     extra_hosts:
       - "host.docker.internal:host-gateway"  # Доступ к LM Studio на Windows
     depends_on:

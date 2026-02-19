@@ -264,6 +264,14 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "47821"]
 
 Redis запускается отдельным контейнером `ferag-redis` (см. `deploy/cr-ubu/docker-compose.yml`). Backend подключается к Redis через Docker-сеть: `redis://redis:47379/0`.
 
+### 8.1 Требования к окружению backend для эндпоинта upload
+
+Эндпоинт `POST /rags/{id}/upload` сохраняет файл в каталог `work_dir` и вызывает цепочку задач Celery (`start_update_chain` из пакета `worker.tasks`). Необходимо:
+
+1. **Импорт worker:** при запуске backend пакет `worker` должен быть доступен для импорта (чтобы вызвать `start_update_chain`). При локальном запуске из `code/backend/` в `PYTHONPATH` должен быть каталог `code/` (родитель и backend, и worker), например: `PYTHONPATH=/path/to/ferag/code uv run uvicorn app.main:app ...`. В коде роутера при необходимости в `sys.path` добавляется `code/` для резервного варианта.
+
+2. **Общий work_dir:** каталог `work_dir` (по умолчанию `/tmp/ferag`) у backend и worker должен указывать на одно и то же место. Backend пишет туда загруженный файл (`rag_{id}/cycle_{cycle_id}/input/source.txt`), worker читает его при выполнении цепочки. При развёртывании в Docker: смонтировать один и тот же volume в контейнеры backend и worker с одним и тем же путём (например, `WORK_DIR=/app/ferag_work` и volume `ferag_work:/app/ferag_work` у обоих сервисов).
+
 ---
 
 ## 9. Порядок запуска

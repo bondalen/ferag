@@ -11,6 +11,27 @@ from app.models import User
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=True)
 
 
+def get_current_user_ws(token: str, db: Session) -> User:
+    """
+    Текущий пользователь по JWT (для WebSocket: token из query param).
+    При невалидном токене или отсутствии пользователя бросает WebSocketException.
+    """
+    from fastapi import WebSocketException
+
+    try:
+        payload = decode_access_token(token)
+        sub = payload.get("sub")
+        if sub is None:
+            raise ValueError("no sub")
+        user_id = int(sub)
+    except (JWTError, ValueError, TypeError):
+        raise WebSocketException(code=1008, reason="Invalid or missing token")
+    user = db.get(User, user_id)
+    if user is None:
+        raise WebSocketException(code=1008, reason="User not found")
+    return user
+
+
 def get_current_user(
     token: str = Depends(oauth2_scheme),
     db: Session = Depends(get_db),

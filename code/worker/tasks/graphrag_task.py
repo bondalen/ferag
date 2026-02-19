@@ -12,25 +12,31 @@ from worker.tasks.base import get_db_session, get_redis, publish_status, update_
 
 
 def _prepare_work_dir(work_dir: Path, input_file: str) -> None:
-    """Создаёт work_dir/input, копирует input_file в input/source.txt."""
+    """Создаёт work_dir/input, копирует input_file в input/source.txt (если не то же самое)."""
     work_dir = Path(work_dir)
     input_dir = work_dir / "input"
     input_dir.mkdir(parents=True, exist_ok=True)
     dest = input_dir / "source.txt"
-    shutil.copy2(input_file, dest)
+    src = Path(input_file)
+    if src.resolve() != dest.resolve():
+        shutil.copy2(input_file, dest)
 
 
 def _write_settings_yaml(work_dir: Path, settings_content: str, llm_api_url: str, llm_model: str) -> None:
-    """Пишет settings.yaml в work_dir, подменяя api_base и model для default_chat_model."""
+    """Пишет settings.yaml в work_dir, подменяя api_base и model для completion model."""
     try:
         data = yaml.safe_load(settings_content)
     except Exception:
-        # Fallback: записать как есть, подставить строки
         out = settings_content.replace("http://10.7.0.3:1234/v1", llm_api_url)
         out = out.replace("llama-3.3-70b-instruct", llm_model)
         (work_dir / "settings.yaml").write_text(out, encoding="utf-8")
         return
-    if data and "models" in data and "default_chat_model" in data["models"]:
+    # graphrag 3.x: completion_models.default_completion_model
+    if data and "completion_models" in data and "default_completion_model" in data["completion_models"]:
+        data["completion_models"]["default_completion_model"]["api_base"] = llm_api_url
+        data["completion_models"]["default_completion_model"]["model"] = llm_model
+    # graphrag 2.x / legacy: models.default_chat_model
+    elif data and "models" in data and "default_chat_model" in data["models"]:
         data["models"]["default_chat_model"]["api_base"] = llm_api_url
         data["models"]["default_chat_model"]["model"] = llm_model
     (work_dir / "settings.yaml").write_text(
@@ -80,7 +86,7 @@ def run_graphrag(
             shutil.copytree(prompts_src, prompts_dst)
 
         subprocess.run(
-            ["graphrag", "index", "--root", str(work_dir)],
+            ["graphrag", "index", "--root", str(work_dir), "--skip-validation"],
             check=True,
             cwd=str(work_dir),
             timeout=3600,

@@ -78,17 +78,18 @@ def get_cycle_n(db: Session, cycle_id: int) -> int:
 @celery.task(name="worker.tasks.base.on_chain_failure")
 def on_chain_failure(
     request: Any,
-    excinfo: Tuple[type, BaseException, Any],
+    exc: BaseException,
+    traceback: Any,
 ) -> None:
     """
     Callback при падении любого шага цепочки: Task.status='failed', publish в Redis.
-    Вызывается через link_error. request.args у всех шагов: (rag_id, cycle_id, task_id[, input_file]).
+    Вызывается через link_error с аргументами (request, exc, traceback).
+    request.args у всех шагов: (rag_id, cycle_id, task_id[, input_file]).
     """
     if not request or not getattr(request, "args", None) or len(request.args) < 3:
         return
     task_id = request.args[2]
-    exc_type, exc_value, _ = excinfo
-    err_msg = str(exc_value) if exc_value else (exc_type.__name__ if exc_type else "Unknown error")
+    err_msg = str(exc) if exc else "Unknown error"
     db = get_db_session()
     try:
         update_task(db, task_id, "failed", err_msg)

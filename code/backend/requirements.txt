@@ -11,3 +11,7 @@ email-validator
 python-dotenv
 httpx
 python-multipart
+redis[asyncio]
+requests
+openai
+celery

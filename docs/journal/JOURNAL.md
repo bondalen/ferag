@@ -487,6 +487,36 @@ MillenniumDB **НЕ поддерживает OWL/RDFS inference** (логиче�
 
 ---
 
+## 2026-02-19 — Чат 2: Worker + полный цикл обновления RAG
+
+**Событие:** Реализован `code/worker/` (Celery), полный pipeline GraphRAG → Fuseki запущен и проверен. Финальная проверка пройдена дважды.
+
+**Решения и действия:**
+
+1. **Redis на cr-ubu** (контейнер `ferag-redis`, образ `redis:7-alpine`, порт `10.7.0.1:47379`) поднят через `docker run`; доступен с nb-win через WireGuard. `redis-cli ping` → `PONG`.
+
+2. **`code/worker/`** реализован целиком: `config.py` (BaseSettings), `celery_app.py`, `fuseki_client.py`, задачи `run_graphrag` → `run_schema_induction` → `do_merge` → `load_to_staging`, цепочка `start_update_chain`. Dockerfile собирается без ошибок.
+
+3. **Адаптация `graphrag-test/`** как библиотеки: в скрипты добавлены вызываемые функции (`graphrag_to_rdf`, `run_schema_induction`, `merge_ontologies`, `merge_triples`); создан `graphrag_lib/__init__.py`.
+
+4. **Backend расширен:** `POST /rags/{id}/upload`, WebSocket `/ws/tasks/{id}`, `POST /rags/{id}/cycles/{id}/approve`, `POST /rags/{id}/chat`.
+
+5. **Исправления в процессе финальной проверки:**
+   - `deploy/nb-win/docker-compose.yml`: порт LM Studio `41234 → 1234`; добавлен volume `/tmp/ferag:/tmp/ferag` для shared work dir;
+   - `code/worker/tasks/base.py`: сигнатура `on_chain_failure` исправлена на `(request, exc, traceback)`;
+   - `code/worker/tasks/graphrag_task.py`: `_prepare_work_dir` — пропуск `shutil.copy2` при src==dst; `_write_settings_yaml` — поддержка схемы graphrag 3.x (`completion_models`); флаг `--skip-validation`;
+   - `graphrag-test/settings.yaml`: переписан под graphrag 3.0.2 — `completion_models`, `embedding_models`, `cache.type: none`, `embed_text.names: []`, `max_tokens: 4096`, `max_gleanings: 0`;
+   - `graphrag-test/prompts/`: обновлены под graphrag 3.0.2 (жёсткие разделители `<|>`, `##`, `<|COMPLETE|>`);
+   - `scripts/run_final_check.py`: таймаут polling увеличен до 2 часов; поддержка `FERAG_SOURCE_FILE`.
+
+6. **Финальная проверка пройдена дважды** (RAG id=22 и id=23): `upload → pipeline done (~12 мин) → approve → chat → LLM ответил`. LLM (`llama-3.3-70b`, LM Studio, `http://10.7.0.3:1234`) вернул ответ на вопрос об Alice Smith и ACME Corporation.
+
+**Задачи:** 4.10 [x], 9.1 [x] (доп. эндпоинты), 9.2a [x], 9.3 [x], 9.4 [x].
+
+**План и чат:** [docs/chats/26-0219-1110_plan.md](../chats/26-0219-1110_plan.md).
+
+---
+
 ## Шаблон записи для новых событий
 
 ```markdown

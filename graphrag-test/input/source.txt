@@ -1,0 +1,9 @@
+Alice Smith works at ACME Corporation as a senior software engineer. She has been with the company since January 2020 and leads the Knowledge Graph team. Alice is responsible for developing the GraphRAG system, which aims to build knowledge graphs from unstructured text using large language models.
+
+ACME Corporation is a technology company founded in 2010 in San Francisco, California. The company specializes in artificial intelligence and natural language processing. ACME has over 500 employees and operates offices in San Francisco, New York, and London.
+
+The GraphRAG project was initiated in January 2024 under Alice's leadership. The project focuses on combining graph databases with retrieval-augmented generation to create more accurate and context-aware AI systems. The team uses Apache Jena Fuseki for storing ontologies and PostgreSQL with Apache AGE for property graph storage.
+
+Alice collaborated with Bob Johnson on the initial design of the GraphRAG system. Bob contributed his expertise in semantic web technologies and RDFS reasoning. Together they developed a dialectical approach to knowledge synthesis, where new information (thesis) is integrated with existing knowledge structures (antithesis) to produce enhanced understanding (synthesis).
+
+The GraphRAG system uses entity extraction to identify key concepts such as organizations, people, locations, and events. It then performs entity resolution to merge duplicate entities and community detection to identify clusters of related information. This structured approach allows for more precise retrieval and generation compared to traditional vector-based RAG systems.

@@ -64,7 +64,7 @@
 | 4.7 | Изучить основы Cypher в Apache AGE | [ ] | Документация: https://age.apache.org/age-manual/master/intro/cypher.html |
 | 4.8 | Создать тестовые узлы и рёбра (проверка работы AGE) | [ ] | Cypher: CREATE (p:Person)-[:KNOWS]->(p2:Person) |
 | 4.9 | Протестировать pgvector: создать таблицу с эмбеддингами, векторный поиск | [ ] | CREATE TABLE test (embedding vector(1536)); поиск по cosine |
-| 4.10 | Установить Apache Jena Fuseki (источник истины для онтологии с OWL reasoning) | [ ] | docs/project/PROJECT-002.md, разд. 5.4; критично для Schema Induction |
+| 4.10 | Установить Apache Jena Fuseki (источник истины для онтологии с OWL reasoning) | [x] | Запущен в Docker (`stain/jena-fuseki`, порт `localhost:43030`); датасеты создаются/удаляются через `fuseki_admin.py`; задействован в Чатах 1–2. |
 
 ---
 
@@ -158,8 +158,8 @@
 | 9.1 | Реализовать `code/backend/` — FastAPI (auth, CRUD, WebSocket) | [x] | Выполнено: auth, rags, tasks. WebSocket, /upload, /chat — в Чате 2. |
 | 9.2a | Развернуть Redis на cr-ubu как отдельный контейнер | [x] | deploy/cr-ubu/docker-compose.yml; redis:7-alpine; порт 10.7.0.1:47379 (WireGuard → nb-win worker); Чат 2 |
 | 9.2 | Написать `code/backend/Dockerfile` — FastAPI (uvicorn) | [ ] | python:3.11-slim, uvicorn; без supervisord; Redis — отдельный контейнер (9.2a); PROJECT-004.md разд. 8; Чат 3 |
-| 9.3 | Реализовать `code/worker/` — Celery (GraphRAG + RAG задачи) | [ ] | Брокер: redis://10.7.0.1:47379/0; задачи: build_graph, run_rag; доступ к Fuseki и PostgreSQL |
-| 9.4 | Написать `code/worker/Dockerfile` | [ ] | Включить graphrag-test/ зависимости; host.docker.internal для LM Studio :41234 |
+| 9.3 | Реализовать `code/worker/` — Celery (GraphRAG + RAG задачи) | [x] | Выполнено в Чате 2: задачи `run_graphrag`, `run_schema_induction`, `do_merge`, `load_to_staging`; цепочка через `start_update_chain`; брокер `redis://10.7.0.1:47379/0`. |
+| 9.4 | Написать `code/worker/Dockerfile` | [x] | Выполнено в Чате 2: `python:3.11-slim`, PYTHONPATH `/app:/app/graphrag-test`; volume `/tmp/ferag` shared с backend; LM Studio на `host.docker.internal:1234`. |
 | 9.5 | Реализовать `code/frontend/` — Vue 3 SPA | [ ] | Vite: base '/ferag/'; страницы: login, список RAG, загрузка файлов, диалог, приглашения |
 | 9.6 | Дополнить `deploy/nb-win/init-db.sh` — расширения AGE и pgvector | [ ] | CREATE EXTENSION age, vector; LOAD 'age'; SELECT create_graph('knowledge_graph') |
 | 9.7 | Собрать Vue и разложить в `/var/www/ferag/` на cr-ubu | [ ] | npm run build → scp/rsync dist/* на cr-ubu; права www-data |
@@ -185,9 +185,9 @@
 
 | Статус | Количество |
 |--------|------------|
-| [x] Выполнено | 20 |
+| [x] Выполнено | 23 |
 | [~] В работе | 2 |
-| [ ] Не начато | 32 |
+| [ ] Не начато | 29 |
 | [-] Отложено | 0 |
 
-*Последнее обновление: 2026-02-15. Добавлен Блок 9 (веб-приложение, 10 задач). Архитектура согласована: [PROJECT-004.md](../project/PROJECT-004.md).*
+*Последнее обновление: 2026-02-19. Чат 2 завершён: реализован `code/worker/` (9.3, 9.4), подтверждена работа Fuseki (4.10). Финальная проверка пройдена дважды.*
