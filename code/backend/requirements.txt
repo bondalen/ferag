@@ -4,8 +4,10 @@ sqlalchemy
 alembic
 psycopg2-binary
 passlib[bcrypt]
+bcrypt<5  # passlib несовместим с bcrypt 5.x
 python-jose[cryptography]
 pydantic-settings
+email-validator
 python-dotenv
 httpx
 python-multipart

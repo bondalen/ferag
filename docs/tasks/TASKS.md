@@ -155,7 +155,7 @@
 
 | ID | Задача | Статус | Примечание |
 |----|--------|--------|------------|
-| 9.1 | Реализовать `code/backend/` — FastAPI (auth, CRUD, WebSocket) | [ ] | JWT-аутентификация, роуты /auth, /rags, /upload, /chat, /tasks; слушать на 0.0.0.0:47821 |
+| 9.1 | Реализовать `code/backend/` — FastAPI (auth, CRUD, WebSocket) | [x] | Выполнено: auth, rags, tasks. WebSocket, /upload, /chat — в Чате 2. |
 | 9.2 | Написать `code/backend/Dockerfile` — FastAPI + Redis + supervisord в одном образе | [ ] | python:3.11-slim, apt redis-server supervisor, supervisord.conf; PROJECT-004.md разд. 8 |
 | 9.3 | Реализовать `code/worker/` — Celery (GraphRAG + RAG задачи) | [ ] | Брокер: redis://10.7.0.1:47379/0; задачи: build_graph, run_rag; доступ к Fuseki и PostgreSQL |
 | 9.4 | Написать `code/worker/Dockerfile` | [ ] | Включить graphrag-test/ зависимости; host.docker.internal для LM Studio :41234 |
