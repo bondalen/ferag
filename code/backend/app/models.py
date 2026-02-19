@@ -78,7 +78,8 @@ class Task(Base):
         Integer, ForeignKey("upload_cycles.id"), nullable=True
     )
     type: Mapped[str] = mapped_column(Text, nullable=False)
-    # graphrag | schema_induction | merge_ontologies | merge_triples | load_to_prod
+    # full_cycle (один тип на весь pipeline, step публикуется через Redis pub/sub)
+    # graphrag | schema_induction | merge_ontologies | merge_triples | load_to_prod (будущие атомарные типы)
     status: Mapped[str] = mapped_column(
         Text, nullable=False, server_default="pending"
     )  # pending | running | done | failed

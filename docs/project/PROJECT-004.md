@@ -41,10 +41,10 @@ RAG-диалог по графу достигнут в рамках лабора
 | Компонент | Тип | Порт | Назначение |
 |-----------|-----|------|------------|
 | **Nginx** | Система | 80, 443 | Reverse proxy, SSL termination, раздача Vue SPA |
-| **ferag** | Docker ×1 | 127.0.0.1:47821 | FastAPI — auth, CRUD, WebSocket |
-| | | 10.7.0.1:47379 | Redis — очередь задач Celery |
+| **ferag** | Docker | 127.0.0.1:47821 | FastAPI — auth, CRUD, WebSocket |
+| **redis** | Docker | 10.7.0.1:47379 | Redis — брокер задач Celery, pub/sub WebSocket |
 
-Один контейнер `ferag` запускает FastAPI и Redis через **supervisord**. Nginx установлен в системе (не в Docker): обслуживает уже существующий сайт ontoline.ru, к нему добавляются location-блоки для ferag.
+Два контейнера управляются одним `docker-compose.yml`. Nginx установлен в системе (не в Docker): обслуживает уже существующий сайт ontoline.ru, к нему добавляются location-блоки для ferag.
 
 ### nb-win (локальная машина)
 
@@ -75,9 +75,9 @@ ontoline.ru → cr-ubu (Nginx, система)
     ├── /ferag/api/    → 127.0.0.1:47821       (FastAPI, Docker)
     └── /ferag/ws/     → 127.0.0.1:47821/ws/   (WebSocket, Docker)
 
-cr-ubu ferag-контейнер:
-    ├── FastAPI (47821)
-    └── Redis   (47379) ←──── WireGuard ────→ Celery worker (nb-win)
+cr-ubu:
+    ├── ferag-контейнер:  FastAPI (47821)
+    └── redis-контейнер:  Redis   (47379) ←──── WireGuard ────→ Celery worker (nb-win)
 
 nb-win (10.7.0.3 по WireGuard):
     ├── postgres:45432  ← FastAPI backend (из cr-ubu)
@@ -129,12 +129,14 @@ nb-win (10.7.0.3 по WireGuard):
 
 Решение: оставить на nb-win, backend обращается к PostgreSQL через WireGuard (10.7.0.3:45432).
 
-### 5.2 Один контейнер на cr-ubu (FastAPI + Redis через supervisord)
+### 5.2 Два контейнера на cr-ubu (FastAPI и Redis раздельно)
 
-cr-ubu имеет 4 GB RAM. Два отдельных контейнера (FastAPI и Redis) несут незначительные дополнительные накладные расходы (несколько десятков МБ на container runtime), но усложняют управление. Объединение через supervisord:
-- экономит RAM (накладные расходы одного контейнера вместо двух);
-- даёт один docker-compose.yml с одной секцией `services`;
-- Redis и FastAPI общаются на `127.0.0.1` внутри контейнера (нет сетевого хопа).
+cr-ubu имеет 4 GB RAM. Изначально рассматривалось объединение FastAPI и Redis в один контейнер через supervisord. Принятое решение — два отдельных контейнера:
+
+- `redis:7-alpine` потребляет ~15–30 МБ RAM и ~5 МБ overhead контейнера — ощутимой экономии от объединения нет.
+- Раздельные контейнеры перезапускаются и обновляются независимо, логи не перемешаны, healthcheck тривиален.
+- Dockerfile backend остаётся простым (только uvicorn, без `apt-get supervisor redis-server`).
+- Redis развёртывается в Чате 2 — немедленно, без зависимости от готовности backend Dockerfile.
 
 ### 5.3 Экзотические порты (диапазон 43000–47999)
 
@@ -244,43 +246,23 @@ location /ferag {
 
 ---
 
-## 8. Контейнер ferag на cr-ubu: supervisord
+## 8. Контейнер ferag на cr-ubu: backend Dockerfile
 
 ```dockerfile
 # code/backend/Dockerfile (эскиз)
 FROM python:3.11-slim
 
-RUN apt-get update && apt-get install -y \
-    redis-server supervisor \
-    && rm -rf /var/lib/apt/lists/*
-
+WORKDIR /app
 COPY requirements.txt .
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . /app
-WORKDIR /app
-COPY supervisord.conf /etc/supervisor/conf.d/ferag.conf
 
-EXPOSE 47821 47379
-CMD ["supervisord", "-n", "-c", "/etc/supervisor/supervisord.conf"]
+EXPOSE 47821
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "47821"]
 ```
 
-```ini
-# supervisord.conf (эскиз)
-[supervisord]
-nodaemon=true
-
-[program:redis]
-command=redis-server --port 47379 --appendonly yes --dir /data
-autostart=true
-autorestart=true
-
-[program:backend]
-command=uvicorn main:app --host 0.0.0.0 --port 47821
-directory=/app
-autostart=true
-autorestart=true
-```
+Redis запускается отдельным контейнером `ferag-redis` (см. `deploy/cr-ubu/docker-compose.yml`). Backend подключается к Redis через Docker-сеть: `redis://redis:47379/0`.
 
 ---
 
@@ -289,7 +271,8 @@ autorestart=true
 ```
 1. WireGuard туннель + Nginx + /var/www/ferag/  (один раз)
 2. nb-win:  docker-compose up -d postgres fuseki
-3. cr-ubu:  docker-compose up -d
+3. cr-ubu:  docker-compose up -d redis            # Чат 2 — Redis уже работает
+            docker-compose up -d ferag            # Чат 3 — после сборки backend Dockerfile
 4. nb-win:  docker-compose up -d worker
 5. (по необходимости) Windows: LM Studio, сервер на :41234
 ```

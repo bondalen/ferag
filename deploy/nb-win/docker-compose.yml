@@ -44,10 +44,13 @@ services:
     container_name: ferag-worker
     restart: unless-stopped
     environment:
-      - CELERY_BROKER_URL=redis://10.7.0.1:47379/0         # Redis на cr-ubu (WireGuard)
-      - DATABASE_URL=postgresql://ferag:${DB_PASSWORD}@postgres:5432/ferag_app  # Внутри Docker-сети
-      - FUSEKI_URL=http://fuseki:3030                       # Внутри Docker-сети
-      - LLM_API_URL=http://host.docker.internal:41234/v1   # LM Studio на Windows
+      - CELERY_BROKER_URL=redis://10.7.0.1:47379/0
+      - CELERY_RESULT_BACKEND=redis://10.7.0.1:47379/1
+      - DATABASE_URL=postgresql://ferag:${DB_PASSWORD}@postgres:5432/ferag_app
+      - FUSEKI_URL=http://fuseki:3030
+      - FUSEKI_USER=admin
+      - FUSEKI_PASSWORD=${FUSEKI_PASSWORD}
+      - LLM_API_URL=http://host.docker.internal:41234/v1
     volumes:
       - ../../graphrag-test:/app/graphrag-test
       - ../../code/worker:/app/worker

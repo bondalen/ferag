@@ -156,7 +156,8 @@
 | ID | Задача | Статус | Примечание |
 |----|--------|--------|------------|
 | 9.1 | Реализовать `code/backend/` — FastAPI (auth, CRUD, WebSocket) | [x] | Выполнено: auth, rags, tasks. WebSocket, /upload, /chat — в Чате 2. |
-| 9.2 | Написать `code/backend/Dockerfile` — FastAPI + Redis + supervisord в одном образе | [ ] | python:3.11-slim, apt redis-server supervisor, supervisord.conf; PROJECT-004.md разд. 8 |
+| 9.2a | Развернуть Redis на cr-ubu как отдельный контейнер | [x] | deploy/cr-ubu/docker-compose.yml; redis:7-alpine; порт 10.7.0.1:47379 (WireGuard → nb-win worker); Чат 2 |
+| 9.2 | Написать `code/backend/Dockerfile` — FastAPI (uvicorn) | [ ] | python:3.11-slim, uvicorn; без supervisord; Redis — отдельный контейнер (9.2a); PROJECT-004.md разд. 8; Чат 3 |
 | 9.3 | Реализовать `code/worker/` — Celery (GraphRAG + RAG задачи) | [ ] | Брокер: redis://10.7.0.1:47379/0; задачи: build_graph, run_rag; доступ к Fuseki и PostgreSQL |
 | 9.4 | Написать `code/worker/Dockerfile` | [ ] | Включить graphrag-test/ зависимости; host.docker.internal для LM Studio :41234 |
 | 9.5 | Реализовать `code/frontend/` — Vue 3 SPA | [ ] | Vite: base '/ferag/'; страницы: login, список RAG, загрузка файлов, диалог, приглашения |
@@ -184,9 +185,9 @@
 
 | Статус | Количество |
 |--------|------------|
-| [x] Выполнено | 19 |
+| [x] Выполнено | 20 |
 | [~] В работе | 2 |
-| [ ] Не начато | 31 |
+| [ ] Не начато | 32 |
 | [-] Отложено | 0 |
 
 *Последнее обновление: 2026-02-15. Добавлен Блок 9 (веб-приложение, 10 задач). Архитектура согласована: [PROJECT-004.md](../project/PROJECT-004.md).*

@@ -15,6 +15,7 @@
 import argparse
 import sys
 from pathlib import Path
+from typing import Optional
 
 try:
     from rdflib import Graph, Namespace
@@ -26,49 +27,44 @@ except ImportError:
 SCHEMA = Namespace("http://example.org/ferag/schema#")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Слияние онтологий цикл 1 + цикл 2")
-    parser.add_argument("--ontology1", "-1", default="extracted_ontology_full.ttl", help="Онтология цикла 1 (TTL)")
-    parser.add_argument("--ontology2", "-2", default="../graphrag-test-cycle2/extracted_ontology_cycle2.ttl", help="Онтология цикла 2 (TTL)")
-    parser.add_argument("--output", "-o", default="integrated_ontology.ttl", help="Выходной TTL")
-    parser.add_argument("--report", "-r", default="merge_ontology_report.txt", help="Текстовый отчёт сравнения")
-    args = parser.parse_args()
+def _local_name(uri):
+    return uri.split("#")[-1].split("/")[-1] if hasattr(uri, "split") else str(uri).split("#")[-1].split("/")[-1]
 
-    root = Path(__file__).resolve().parent
-    path1 = (root / args.ontology1) if not Path(args.ontology1).is_absolute() else Path(args.ontology1)
-    path2 = (root / args.ontology2) if not Path(args.ontology2).is_absolute() else Path(args.ontology2)
-    out_path = (root / args.output) if not Path(args.output).is_absolute() else Path(args.output)
-    report_path = (root / args.report) if not Path(args.report).is_absolute() else Path(args.report)
 
+def merge_ontologies(
+    path1: Path,
+    path2: Path,
+    out_path: Path,
+    report_path: Optional[Path] = None,
+) -> Path:
+    """
+    Сливает две онтологии (TTL) в одну. Записывает результат в out_path.
+    Если report_path задан — пишет текстовый отчёт. Возвращает out_path.
+    """
+    path1, path2, out_path = Path(path1), Path(path2), Path(out_path)
     for p in (path1, path2):
         if not p.exists():
-            print(f"Ошибка: не найден {p}", file=sys.stderr)
-            sys.exit(1)
+            raise FileNotFoundError(f"Не найден файл: {p}")
 
     g1 = Graph()
     g2 = Graph()
     g1.parse(path1, format="turtle")
     g2.parse(path2, format="turtle")
 
-    # Результирующий граф: объединение всех триплетов (дубликаты не добавляются)
     merged = Graph()
     for t in g1:
         merged.add(t)
     for t in g2:
         merged.add(t)
 
-    # Сравнение: классы (rdf:type owl:Class) и объектные свойства (rdf:type owl:ObjectProperty)
     classes1 = {s for s in g1.subjects(RDF.type, OWL.Class)}
     classes2 = {s for s in g2.subjects(RDF.type, OWL.Class)}
     props1 = {s for s in g1.subjects(RDF.type, OWL.ObjectProperty)}
     props2 = {s for s in g2.subjects(RDF.type, OWL.ObjectProperty)}
-    # Для отчёта используем локальные имена (без полного URI)
-    def local_name(uri):
-        return uri.split("#")[-1].split("/")[-1] if hasattr(uri, "split") else str(uri).split("#")[-1].split("/")[-1]
-    classes1_n = {local_name(s) for s in classes1}
-    classes2_n = {local_name(s) for s in classes2}
-    props1_n = {local_name(s) for s in props1}
-    props2_n = {local_name(s) for s in props2}
+    classes1_n = {_local_name(s) for s in classes1}
+    classes2_n = {_local_name(s) for s in classes2}
+    props1_n = {_local_name(s) for s in props1}
+    props2_n = {_local_name(s) for s in props2}
 
     only1_classes = classes1_n - classes2_n
     only2_classes = classes2_n - classes1_n
@@ -98,12 +94,33 @@ def main() -> None:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     merged.serialize(destination=str(out_path), format="turtle", encoding="utf-8")
-    report_path.write_text("\n".join(report_lines), encoding="utf-8")
+    if report_path is not None:
+        Path(report_path).write_text("\n".join(report_lines), encoding="utf-8")
 
-    print(f"Записано: {out_path} (триплетов: {len(merged)})")
-    print(f"Отчёт:     {report_path}")
-    for line in report_lines:
-        print(line)
+    return out_path
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Слияние онтологий цикл 1 + цикл 2")
+    parser.add_argument("--ontology1", "-1", default="extracted_ontology_full.ttl", help="Онтология цикла 1 (TTL)")
+    parser.add_argument("--ontology2", "-2", default="../graphrag-test-cycle2/extracted_ontology_cycle2.ttl", help="Онтология цикла 2 (TTL)")
+    parser.add_argument("--output", "-o", default="integrated_ontology.ttl", help="Выходной TTL")
+    parser.add_argument("--report", "-r", default="merge_ontology_report.txt", help="Текстовый отчёт сравнения")
+    args = parser.parse_args()
+
+    root = Path(__file__).resolve().parent
+    path1 = (root / args.ontology1) if not Path(args.ontology1).is_absolute() else Path(args.ontology1)
+    path2 = (root / args.ontology2) if not Path(args.ontology2).is_absolute() else Path(args.ontology2)
+    out_path = (root / args.output) if not Path(args.output).is_absolute() else Path(args.output)
+    report_path = (root / args.report) if not Path(args.report).is_absolute() else Path(args.report)
+
+    try:
+        merge_ontologies(path1, path2, out_path, report_path)
+        print(f"Записано: {out_path}")
+        print(f"Отчёт:    {report_path}")
+    except FileNotFoundError as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

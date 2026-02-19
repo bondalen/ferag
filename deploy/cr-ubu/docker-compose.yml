@@ -1,8 +1,20 @@
-# cr-ubu: 1 контейнер (FastAPI + Redis через supervisord)
+# cr-ubu: 2 контейнера (FastAPI + Redis раздельно)
 # Nginx в системе (не в Docker) — конфиг: nginx-location-ferag.conf
-# Порты: FastAPI 47821, Redis 47379
+# Порты: FastAPI 127.0.0.1:47821, Redis 10.7.0.1:47379 (WireGuard → nb-win worker)
 
 services:
+  redis:
+    image: redis:7-alpine
+    container_name: ferag-redis
+    restart: unless-stopped
+    command: redis-server --port 47379 --appendonly yes --dir /data
+    ports:
+      - "10.7.0.1:47379:47379"   # WireGuard → Celery worker на nb-win
+    volumes:
+      - redis-data:/data
+    networks:
+      - ferag-network
+
   ferag:
     build:
       context: ../../code/backend
@@ -11,16 +23,24 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:47821:47821"  # FastAPI → Nginx (только localhost)
-      - "10.7.0.1:47379:47379"   # Redis → Celery worker на nb-win (WireGuard)
     volumes:
-      - ferag-data:/data          # Redis persistence (/data внутри контейнера)
       - ./uploads:/app/uploads    # Временные загруженные файлы
     environment:
       - DATABASE_URL=postgresql://ferag:${DB_PASSWORD}@10.7.0.3:45432/ferag_app
-      - REDIS_URL=redis://127.0.0.1:47379/0
+      - REDIS_URL=redis://redis:47379/0
       - JWT_SECRET=${JWT_SECRET}
       - FUSEKI_URL=http://10.7.0.3:43030
+      - FUSEKI_USER=admin
+      - FUSEKI_PASSWORD=${FUSEKI_PASSWORD}
       - ALLOWED_ORIGINS=https://ontoline.ru
+    depends_on:
+      - redis
+    networks:
+      - ferag-network
 
 volumes:
-  ferag-data:
+  redis-data:
+
+networks:
+  ferag-network:
+    driver: bridge

@@ -93,27 +93,31 @@ def extract_turtle(text: str) -> str:
     return text
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Schema Induction: full ontology from triplets + entities + communities")
-    parser.add_argument("--output", "-o", default=OUTPUT_DEFAULT, help="Output .ttl file")
-    parser.add_argument("--root", default=".", help="Project root (with output/)")
-    args = parser.parse_args()
-
-    root = Path(args.root)
+def run_schema_induction(
+    root_dir: Path,
+    output_path: Path,
+    llm_base_url: str = LM_STUDIO_BASE,
+    model: str = MODEL,
+    request_timeout: int = REQUEST_TIMEOUT_SEC,
+) -> Path:
+    """
+    Строит промпт из output/ в root_dir, вызывает LLM, сохраняет онтологию в output_path.
+    Возвращает output_path. При ошибке бросает исключение.
+    """
+    root_dir = Path(root_dir)
+    output_path = Path(output_path)
     for name in ["entities.parquet", "relationships.parquet", "communities.parquet", "community_reports.parquet"]:
-        if not (root / "output" / name).exists():
-            print(f"Ошибка: не найден output/{name}", file=sys.stderr)
-            sys.exit(1)
+        if not (root_dir / "output" / name).exists():
+            raise FileNotFoundError(f"Не найден output/{name} в {root_dir}")
 
-    entities, rels, comms, reports = load_data(root)
+    entities, rels, comms, reports = load_data(root_dir)
     prompt = build_prompt(entities, rels, comms, reports)
     prompt_chars = len(prompt)
 
-    print("Полная онтология: все триплеты и отчёты сообществ. Вызов LM Studio (может занять 15–40 мин)...")
     t0 = time.perf_counter()
-    client = OpenAI(base_url=LM_STUDIO_BASE, api_key="lm-studio", timeout=REQUEST_TIMEOUT_SEC)
+    client = OpenAI(base_url=llm_base_url, api_key="lm-studio", timeout=request_timeout)
     resp = client.chat.completions.create(
-        model=MODEL,
+        model=model,
         messages=[{"role": "user", "content": prompt}],
         max_tokens=MAX_RESPONSE_TOKENS,
         temperature=0.0,
@@ -121,21 +125,16 @@ def main() -> None:
     t1 = time.perf_counter()
     raw = (resp.choices[0].message.content or "").strip()
     if not raw:
-        print("Пустой ответ от модели.", file=sys.stderr)
-        sys.exit(1)
+        raise RuntimeError("Пустой ответ от модели")
 
     turtle = extract_turtle(raw)
-    out_path = root / args.output
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(turtle, encoding="utf-8")
-    print(f"Записано: {out_path} ({len(turtle)} символов)")
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(turtle, encoding="utf-8")
 
-    if out_path.suffix.lower() == ".ttl":
-        owl_path = out_path.with_suffix(".owl")
+    if output_path.suffix.lower() == ".ttl":
+        owl_path = output_path.with_suffix(".owl")
         owl_path.write_text(turtle, encoding="utf-8")
-        print(f"Копия: {owl_path}")
 
-    # Замер времени и объёмов — для фиксации затрат по объёму текста
     usage = getattr(resp, "usage", None)
     total_tokens = None
     if usage is not None:
@@ -151,9 +150,26 @@ def main() -> None:
         "output_chars": len(turtle),
         "output_tokens": total_tokens,
     }
-    timing_path = root / TIMING_FILE
+    timing_path = root_dir / TIMING_FILE
     timing_path.write_text(json.dumps(timing, indent=2), encoding="utf-8")
-    print(f"Время и объёмы: {timing_path} ({timing['wall_clock_seconds']} с)")
+
+    return output_path
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Schema Induction: full ontology from triplets + entities + communities")
+    parser.add_argument("--output", "-o", default=OUTPUT_DEFAULT, help="Output .ttl file")
+    parser.add_argument("--root", default=".", help="Project root (with output/)")
+    args = parser.parse_args()
+
+    root = Path(args.root)
+    out_path = root / args.output
+    try:
+        run_schema_induction(root, out_path)
+        print(f"Записано: {out_path}")
+    except (FileNotFoundError, RuntimeError) as e:
+        print(e, file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":

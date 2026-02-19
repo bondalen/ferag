@@ -87,6 +87,26 @@ deploy/
 
 ---
 
+## Доступ к cr-ubu по SSH
+
+Для автоматизированного деплоя и запуска команд на cr-ubu (в т.ч. из Cursor Agent с nb-win) используется пользователь **cursor-agent** и ключ из репозитория.
+
+| Параметр | Значение |
+|----------|----------|
+| Хост | `176.108.244.252` (использовать IP; имя `cr-ubu` в среде может не резолвиться) |
+| Пользователь | `cursor-agent` |
+| Ключ | `проект/.ssh/cursor_agent_key` |
+| known_hosts | `проект/.ssh/known_hosts` |
+
+**Пример (из корня репозитория):**
+```bash
+ssh -i .ssh/cursor_agent_key -o UserKnownHostsFile=.ssh/known_hosts cursor-agent@176.108.244.252 "docker ps"
+```
+
+Правило для агента: [.cursor/rules/deploy-cr-ubu-ssh.mdc](../.cursor/rules/deploy-cr-ubu-ssh.mdc). У пользователя cursor-agent нет sudo без пароля; установка в домашний каталог (например Docker Compose v2) — без sudo.
+
+---
+
 ## Команды развёртывания
 
 ### cr-ubu

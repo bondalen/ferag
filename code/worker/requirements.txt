@@ -1,0 +1,11 @@
+celery[redis]
+redis
+sqlalchemy
+psycopg2-binary
+httpx
+graphrag          # MS GraphRAG
+llama-index-core
+llama-index-llms-openai-like
+rdflib
+python-dotenv
+pydantic-settings
