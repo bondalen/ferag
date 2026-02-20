@@ -72,6 +72,10 @@ deploy/
 
 ## Развёртывание на cr-ubu
 
+**Текущее состояние (2026-02-20):** backend развёрнут по **варианту B** (образ с nb-win, контейнеры ferag + ferag-redis). Каталог деплоя на сервере — `~cursor-agent/ferag-deploy/`. Подстановка реального .env и перезапуск контейнера — в [DEPLOYMENT_SUMMARY.md](DEPLOYMENT_SUMMARY.md#текущее-развёртывание-backend-на-cr-ubu-вариант-b).
+
+**Вариант A (если решите собирать на cr-ubu):**
+
 ```bash
 cd /opt/ferag/deploy/cr-ubu
 

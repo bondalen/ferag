@@ -8,18 +8,27 @@ import yaml
 
 from worker.celery_app import celery
 from worker.config import get_settings
-from worker.tasks.base import get_db_session, get_redis, publish_status, update_task
+from worker.tasks.base import get_db_session, get_redis, get_cycle_source_content, publish_status, update_task
 
 
-def _prepare_work_dir(work_dir: Path, input_file: str) -> None:
-    """Создаёт work_dir/input, копирует input_file в input/source.txt (если не то же самое)."""
+def _prepare_work_dir(work_dir: Path, input_file: str, cycle_id: int) -> None:
+    """Создаёт work_dir/input, заполняет input/source.txt: копией с диска или из БД (source_content)."""
     work_dir = Path(work_dir)
     input_dir = work_dir / "input"
     input_dir.mkdir(parents=True, exist_ok=True)
     dest = input_dir / "source.txt"
     src = Path(input_file)
-    if src.resolve() != dest.resolve():
+    if src.exists() and src.resolve() != dest.resolve():
         shutil.copy2(input_file, dest)
+    else:
+        content = get_cycle_source_content(cycle_id)
+        if not content or not content.strip():
+            raise FileNotFoundError(
+                f"source not found or empty for cycle {cycle_id} (backend must save source_content to DB)"
+            )
+        dest.write_text(content, encoding="utf-8")
+    if not dest.exists() or dest.stat().st_size == 0:
+        raise RuntimeError(f"input/source.txt missing or empty after prepare (cycle {cycle_id})")
 
 
 def _write_settings_yaml(work_dir: Path, settings_content: str, llm_api_url: str, llm_model: str) -> None:
@@ -75,7 +84,7 @@ def run_graphrag(
         publish_status(r, task_id, "running", "graphrag", None)
 
         work_dir.mkdir(parents=True, exist_ok=True)
-        _prepare_work_dir(work_dir, input_file)
+        _prepare_work_dir(work_dir, input_file, cycle_id)
 
         template_settings = (graphrag_test_dir / "settings.yaml").read_text(encoding="utf-8")
         _write_settings_yaml(work_dir, template_settings, settings.llm_api_url, settings.llm_model)

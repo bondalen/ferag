@@ -123,6 +123,9 @@ outputs/
 *.rar
 *.7z
 
+# Node/nvm (установка в проекте для frontend)
+.nvm/
+
 # Кеш
 .cache/
 __pycache__/

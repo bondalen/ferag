@@ -2,9 +2,9 @@
 
 Том проектной документации: архитектура веб-приложения ferag, двухмашинная топология, технологический стек, компоненты, маршрутизация, ключевые архитектурные решения.
 
-**Статус:** архитектура согласована (2026-02-15), реализация не начата.  
+**Статус:** архитектура согласована (2026-02-15). Реализация по плану 26-0219-2034: backend и frontend развёрнуты; backend на cr-ubu — по варианту B (образ с nb-win, контейнер ferag + отдельный redis).  
 **Задачи:** Блок 9 в [TASKS.md](../tasks/TASKS.md).  
-**Операционные файлы:** [deploy/](../../deploy/) (docker-compose, .env.example, nginx config).
+**Операционные файлы:** [deploy/](../../deploy/) (docker-compose, .env.example, nginx config). Текущее развёртывание backend на cr-ubu (вариант B, роли user1/cursor-agent, .env, перезапуск) — [deploy/DEPLOYMENT_SUMMARY.md](../../deploy/DEPLOYMENT_SUMMARY.md#текущее-развёртывание-backend-на-cr-ubu-вариант-b).
 
 ---
 

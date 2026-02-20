@@ -25,6 +25,8 @@ class Settings(BaseSettings):
     work_dir: Path = Path("/tmp/ferag")
     # Redis (pub/sub для WebSocket статусов задач; тот же инстанс, что и Celery broker)
     redis_url: str = "redis://localhost:6379/0"
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/1"
     # LLM для RAG-чата (LM Studio или OpenAI-совместимый)
     llm_api_url: str = "http://host.docker.internal:41234/v1"
     llm_model: str = "lmstudio-community/Meta-Llama-3.3-70B-Instruct-UDLQ4_K_M"

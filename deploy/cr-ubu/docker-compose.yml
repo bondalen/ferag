@@ -16,6 +16,7 @@ services:
       - ferag-network
 
   ferag:
+    image: ferag-backend:latest
     build:
       context: ../../code/backend
       dockerfile: Dockerfile
@@ -28,6 +29,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://ferag:${DB_PASSWORD}@10.7.0.3:45432/ferag_app
       - REDIS_URL=redis://redis:47379/0
+      - CELERY_BROKER_URL=redis://redis:47379/0
+      - CELERY_RESULT_BACKEND=redis://redis:47379/1
       - JWT_SECRET=${JWT_SECRET}
       - FUSEKI_URL=http://10.7.0.3:43030
       - FUSEKI_USER=admin

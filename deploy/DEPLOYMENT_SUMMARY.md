@@ -119,6 +119,108 @@ ssh -i .ssh/cursor_agent_key -o UserKnownHostsFile=.ssh/known_hosts cursor-agent
 
 ---
 
+## Текущее развёртывание backend на cr-ubu (вариант B)
+
+**Дата:** 2026-02-20. **План:** [docs/chats/26-0219-2034_plan.md](../docs/chats/26-0219-2034_plan.md) (п. 8).
+
+Backend развёрнут по **варианту B**: образ собирается на nb-win, экспортируется через `docker save`, загружается на cr-ubu по SCP. На cr-ubu контейнер ferag и контейнер redis работают **раздельно** (не один compose-проект: redis был поднят ранее, ferag поднят вручную с подключением к redis по IP в сети bridge).
+
+### Роли пользователей на cr-ubu
+
+| Пользователь    | Назначение |
+|-----------------|------------|
+| **cursor-agent**| SSH из репозитория (ключ `.ssh/cursor_agent_key`). Читает/пишет `~/ferag-deploy/`, запускает Docker (образ ferag-backend:latest, контейнер ferag). Без sudo. |
+| **user1**       | Доступ по SSH с nb-win (ключ alex@nb-win в `~user1/.ssh/authorized_keys`). Имеет sudo. Нужен для: копирования .env в каталог cursor-agent, при необходимости — остановки/запуска контейнера от имени cursor-agent. |
+
+Каталог `/opt/ferag` на сервере при развёртывании отсутствовал; все артефакты варианта B лежат в `~cursor-agent/ferag-deploy/`.
+
+### Каталоги и файлы на cr-ubu
+
+| Путь | Владелец | Содержимое |
+|------|----------|------------|
+| `/home/cursor-agent/ferag-deploy/` | cursor-agent | `docker-compose.yml`, `.env.example`, `.env` (секреты; создаётся из nb-win, копируется под user1). |
+| `/home/cursor-agent/ferag-deploy/uploads/` | cursor-agent | Пустой каталог для volume (при использовании compose). |
+| `/var/www/ferag/` | www-data | Собранный frontend (index.html, assets/). |
+| `/tmp/ferag-backend.tar.gz` | — | Временный файл после `scp`; после `docker load` можно удалить. |
+
+### Сборка образа и загрузка на cr-ubu (вариант B)
+
+**1. nb-win (из корня репозитория):**
+```bash
+docker build -t ferag-backend:latest -f code/backend/Dockerfile code/backend/
+docker save ferag-backend:latest | gzip > /tmp/ferag-backend.tar.gz
+scp -i .ssh/cursor_agent_key -o UserKnownHostsFile=.ssh/known_hosts \
+  /tmp/ferag-backend.tar.gz cursor-agent@176.108.244.252:/tmp/
+```
+
+**2. cr-ubu (под cursor-agent по SSH):**
+```bash
+docker load < /tmp/ferag-backend.tar.gz
+```
+
+Предварительно в `~/ferag-deploy/` должны быть `docker-compose.yml` и при необходимости `.env.example` (скопированы через scp из репозитория).
+
+### Подключение к Redis
+
+Контейнер **ferag-redis** уже запущен в сети **bridge**. Его IP в Docker (на момент деплоя) — **172.17.0.2**, порт 47379. Контейнер ferag запускается в той же сети (bridge) с переменными:
+- `REDIS_URL=redis://172.17.0.2:47379/0`
+- `CELERY_BROKER_URL=redis://172.17.0.2:47379/0`
+- `CELERY_RESULT_BACKEND=redis://172.17.0.2:47379/1`
+
+Если ferag-redis перезапускался, его IP в bridge мог измениться; тогда перед запуском ferag нужно проверить: `docker inspect ferag-redis --format '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}'`.
+
+### Подстановка реального .env и перезапуск ferag
+
+Секреты (DATABASE_URL, JWT_SECRET, FUSEKI_* и т.д.) должны совпадать с nb-win. Рекомендуемый порядок:
+
+**1. nb-win (alex):** загрузить текущий .env бэкенда на сервер:
+```bash
+cd /home/alex/projects/ferag
+scp code/backend/.env user1@176.108.244.252:/tmp/ferag.env
+```
+
+**2. cr-ubu (user1):** скопировать .env в каталог cursor-agent и выставить владельца:
+```bash
+sudo cp /tmp/ferag.env /home/cursor-agent/ferag-deploy/.env
+sudo chown cursor-agent:cursor-agent /home/cursor-agent/ferag-deploy/.env
+```
+
+**3. cr-ubu (user1):** остановить и удалить старый контейнер ferag:
+```bash
+docker stop ferag && docker rm ferag
+```
+
+**4. cr-ubu (user1):** запустить новый контейнер с переменными из .env (от имени cursor-agent, чтобы прочитать .env):
+```bash
+sudo -u cursor-agent bash -c 'cd /home/cursor-agent/ferag-deploy && set -a && . ./.env && set +a && docker run -d --name ferag --restart unless-stopped --network bridge -p 127.0.0.1:47821:47821 -e DATABASE_URL="$DATABASE_URL" -e REDIS_URL="redis://172.17.0.2:47379/0" -e CELERY_BROKER_URL="redis://172.17.0.2:47379/0" -e CELERY_RESULT_BACKEND="redis://172.17.0.2:47379/1" -e JWT_SECRET="$JWT_SECRET" -e FUSEKI_URL="$FUSEKI_URL" -e FUSEKI_USER="$FUSEKI_USER" -e FUSEKI_PASSWORD="$FUSEKI_PASSWORD" -e ALLOWED_ORIGINS="https://ontoline.ru" ferag-backend:latest'
+```
+
+Проверка: `docker ps --filter name=ferag`.
+
+#### Важно: на cr-ubu в .env хосты должны указывать на nb-win (10.7.0.3)
+
+На nb-win в `code/backend/.env` БД и Fuseki задаются как `localhost:45432` и `http://localhost:43030`. При копировании этого `.env` на cr-ubu **нельзя оставлять localhost**: из контейнера ferag на cr-ubu `localhost` — это сам контейнер, до PostgreSQL и Fuseki на nb-win подключиться нельзя.
+
+**Симптомы:**
+- **500 при регистрации/входе** (`POST .../ferag/api/auth/register` или `/auth/login`) — неверный **DATABASE_URL** (оставлен localhost).
+- **500 при создании RAG** (`POST .../ferag/api/rags`) — неверный **FUSEKI_URL** (оставлен localhost).
+
+**Решение:** в `~/ferag-deploy/.env` на cr-ubu заменить оба хоста на **10.7.0.3** (WireGuard-адрес nb-win):
+
+```bash
+# На cr-ubu (под cursor-agent по SSH)
+sed -i 's|@localhost:45432|@10.7.0.3:45432|' ~/ferag-deploy/.env
+sed -i 's|FUSEKI_URL=http://localhost:43030|FUSEKI_URL=http://10.7.0.3:43030|' ~/ferag-deploy/.env
+```
+
+После изменений перезапустить контейнер ferag (остановить, удалить, запустить заново с переменными из обновлённого `.env`, как в подразделе выше). Проверка: регистрация, вход и создание RAG в браузере проходят без 500.
+
+### Обновление образа (повторный деплой варианта B)
+
+Повторить сборку на nb-win, scp архива на cr-ubu, на cr-ubu: `docker load < /tmp/ferag-backend.tar.gz`. Затем остановить и удалить контейнер ferag и запустить заново той же командой `docker run ...` (или скриптом с подстановкой .env), как в предыдущем подразделе.
+
+---
+
 ## Команды развёртывания
 
 ### cr-ubu

@@ -75,6 +75,19 @@ def get_cycle_n(db: Session, cycle_id: int) -> int:
     return int(row[0])
 
 
+def get_cycle_source_content(cycle_id: int) -> Optional[str]:
+    """Прочитать source_content из upload_cycles по id. Для кросс-машинного деплоя (файл не на диске worker)."""
+    db = get_db_session()
+    try:
+        row = db.execute(
+            text("SELECT source_content FROM upload_cycles WHERE id = :id"),
+            {"id": cycle_id},
+        ).fetchone()
+        return row[0] if row and row[0] is not None else None
+    finally:
+        db.close()
+
+
 @celery.task(name="worker.tasks.base.on_chain_failure")
 def on_chain_failure(
     request: Any,

@@ -1,12 +1,13 @@
 """CRUD RAG-экземпляров: создание, список, по id, удаление, загрузка файла, approve цикла."""
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, status, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
+from app.celery_sender import send_update_chain
 from app.config import get_settings
 from app.deps import get_current_user, get_db
 from app.fuseki_admin import (
@@ -22,11 +23,6 @@ from app.fuseki_admin import (
     sparql_update,
 )
 from app.models import RagInstance, RagMember, Task, UploadCycle, User
-
-# Чтобы бэкенд мог вызывать start_update_chain, пакет worker должен быть на sys.path (code/)
-_code_dir = Path(__file__).resolve().parent.parent.parent
-if _code_dir not in [Path(p).resolve() for p in sys.path]:
-    sys.path.insert(0, str(_code_dir))
 
 router = APIRouter()
 
@@ -46,6 +42,24 @@ class RAGResponse(BaseModel):
     created_at: datetime
 
     model_config = {"from_attributes": True}
+
+
+class MemberAddBody(BaseModel):
+    email: str
+    role: Literal["viewer", "editor"]
+
+
+class MemberResponse(BaseModel):
+    user_id: int
+    email: str
+    role: str
+
+
+class MemberListItem(BaseModel):
+    user_id: int
+    email: str
+    display_name: str | None
+    role: str
 
 
 def _can_access_rag(db: Session, user: User, rag_id: int) -> RagInstance | None:
@@ -83,7 +97,12 @@ def create_rag(
     rag.fuseki_dataset = rag_prod_dataset(rag.id)
     db.commit()
     db.refresh(rag)
-    create_dataset(rag.fuseki_dataset)
+    try:
+        create_dataset(rag.fuseki_dataset)
+    except Exception:
+        # Fuseki может быть временно недоступен (например, порт ещё не поднят).
+        # RAG-запись уже сохранена в БД; worker создаст датасет при необходимости.
+        pass
     return rag
 
 
@@ -107,6 +126,42 @@ def list_rags(
 class UploadResponse(BaseModel):
     cycle_id: int
     task_id: int
+
+
+class CycleInReview(BaseModel):
+    cycle_id: int
+    task_id: int
+
+
+class UploadStatusResponse(BaseModel):
+    """Есть ли цикл в статусе review (ожидает подтверждения). После перезагрузки/повторного входа фронт восстанавливает кнопку «Подтвердить»."""
+    cycle_in_review: CycleInReview | None = None
+
+
+@router.get("/{rag_id}/upload-status", response_model=UploadStatusResponse)
+def get_upload_status(
+    rag_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Последний цикл в статусе review и его task_id (для восстановления UI после перезагрузки)."""
+    rag = _can_access_rag(db, current_user, rag_id)
+    if not rag:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RAG not found")
+    cycle = (
+        db.query(UploadCycle)
+        .filter(UploadCycle.rag_id == rag_id, UploadCycle.status == "review")
+        .order_by(UploadCycle.id.desc())
+        .first()
+    )
+    if not cycle:
+        return UploadStatusResponse(cycle_in_review=None)
+    task = db.query(Task).filter(Task.rag_id == rag_id, Task.cycle_id == cycle.id).first()
+    if not task:
+        return UploadStatusResponse(cycle_in_review=None)
+    return UploadStatusResponse(
+        cycle_in_review=CycleInReview(cycle_id=cycle.id, task_id=task.id)
+    )
 
 
 @router.post("/{rag_id}/upload", response_model=UploadResponse)
@@ -143,6 +198,7 @@ async def upload_file(
     input_dir.mkdir(parents=True, exist_ok=True)
     file_path = input_dir / "source.txt"
     content = await file.read()
+    cycle.source_content = content.decode("utf-8")
     file_path.write_bytes(content)
     task = Task(
         rag_id=rag_id,
@@ -155,8 +211,7 @@ async def upload_file(
     db.refresh(cycle)
     db.refresh(task)
     try:
-        from worker.tasks import start_update_chain
-        start_update_chain(rag_id, cycle.id, task.id, str(file_path))
+        send_update_chain(rag_id, cycle.id, task.id, str(file_path))
     except Exception as e:
         task.status = "failed"
         task.error = str(e)
@@ -295,6 +350,99 @@ def get_rag(
     if not rag:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RAG not found")
     return rag
+
+
+@router.get("/{rag_id}/members", response_model=list[MemberListItem])
+def list_members(
+    rag_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Список участников RAG (владелец + участники). Доступен владельцу и любому участнику."""
+    rag = _can_access_rag(db, current_user, rag_id)
+    if not rag:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RAG not found")
+    owner = db.get(User, rag.owner_id)
+    result: list[MemberListItem] = []
+    if owner:
+        result.append(
+            MemberListItem(
+                user_id=owner.id,
+                email=owner.email,
+                display_name=owner.display_name,
+                role="owner",
+            )
+        )
+    for m in db.query(RagMember).filter(RagMember.rag_id == rag_id).all():
+        u = db.get(User, m.user_id)
+        if u:
+            result.append(
+                MemberListItem(
+                    user_id=u.id,
+                    email=u.email,
+                    display_name=u.display_name,
+                    role=m.role,
+                )
+            )
+    return result
+
+
+@router.post("/{rag_id}/members", response_model=MemberResponse, status_code=status.HTTP_201_CREATED)
+def add_member(
+    rag_id: int,
+    body: MemberAddBody,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Добавить участника по email. Только владелец RAG."""
+    rag = _can_access_rag(db, current_user, rag_id)
+    if not rag:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RAG not found")
+    if not _is_owner(current_user, rag):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owner can add members")
+    target = db.query(User).filter(User.email == body.email).first()
+    if not target:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if target.id == rag.owner_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is already the owner",
+        )
+    if db.get(RagMember, (rag_id, target.id)):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="User is already a member",
+        )
+    member = RagMember(rag_id=rag_id, user_id=target.id, role=body.role)
+    db.add(member)
+    db.commit()
+    return MemberResponse(user_id=target.id, email=target.email, role=body.role)
+
+
+@router.delete("/{rag_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_member(
+    rag_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Удалить участника из RAG. Только владелец; нельзя удалить самого себя (владельца)."""
+    rag = _can_access_rag(db, current_user, rag_id)
+    if not rag:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RAG not found")
+    if not _is_owner(current_user, rag):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only owner can remove members")
+    if user_id == rag.owner_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot remove the owner",
+        )
+    member = db.get(RagMember, (rag_id, user_id))
+    if not member:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Member not found")
+    db.delete(member)
+    db.commit()
+    return None
 
 
 @router.delete("/{rag_id}", status_code=status.HTTP_204_NO_CONTENT)

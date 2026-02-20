@@ -30,7 +30,7 @@ services:
       - ADMIN_PASSWORD=${FUSEKI_PASSWORD}
       - JVM_ARGS=-Xmx8g
     ports:
-      - "127.0.0.1:43030:3030"  # Только localhost nb-win (worker обращается внутри Docker-сети)
+      - "0.0.0.0:43030:3030"     # Все интерфейсы: localhost + WireGuard (10.7.0.3) → backend на cr-ubu
     volumes:
       - fuseki-data:/fuseki
     networks:

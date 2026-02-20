@@ -65,6 +65,7 @@ class UploadCycle(Base):
     merged_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    source_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
 class Task(Base):

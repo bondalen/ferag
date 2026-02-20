@@ -91,7 +91,8 @@ def export_dataset_to_ttl(dataset_name: str, out_path: Path) -> None:
             headers={"Accept": "text/turtle"},
             timeout=120.0,
         )
-        if r.status_code == 404:
+        if r.status_code in (404, 405):
+            # 404: датасет не существует; 405: Fuseki не распознаёт путь (датасет не создан)
             out_path.write_text("# Empty dataset (dataset not found)\n", encoding="utf-8")
             return
         r.raise_for_status()
