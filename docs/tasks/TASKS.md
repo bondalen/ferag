@@ -166,6 +166,9 @@
 | 9.8 | Настроить Nginx на cr-ubu | [ ] | sudo cp deploy/cr-ubu/nginx-location-ferag.conf /etc/nginx/snippets/ferag.conf; include в vhost |
 | 9.9 | Первый сквозной запуск и проверка | [ ] | login → создать RAG → загрузить файл → вопрос → LLM-ответ |
 | 9.10 | (опц.) CI/CD | [ ] | GitHub Actions или аналог: build + deploy code/frontend, docker-compose up --build code/backend |
+| 9.11 | Сохранение истории диалога по RAG | [ ] | Таблица chat_messages, запись при ответе, GET /rags/{id}/chat/messages, отображение истории во фронте. [PROJECT-004-chat-dialogue](../project/PROJECT-004-chat-dialogue.md) |
+| 9.12 | Контекст диалога в LLM (скользящее окно) | [ ] | Передавать в LLM последние K пар при POST /rags/{id}/chat. Зависимость: 9.11. [PROJECT-004-chat-dialogue](../project/PROJECT-004-chat-dialogue.md) |
+| 9.13 | (опц.) Сжатие длинных диалогов | [ ] | Периодическая суммаризация старых сообщений, подстановка резюме + последние K пар в запрос к LLM. Зависимость: 9.12. [PROJECT-004-chat-dialogue](../project/PROJECT-004-chat-dialogue.md) |
 
 ---
 

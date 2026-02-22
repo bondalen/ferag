@@ -219,6 +219,56 @@ sed -i 's|FUSEKI_URL=http://localhost:43030|FUSEKI_URL=http://10.7.0.3:43030|' ~
 
 Повторить сборку на nb-win, scp архива на cr-ubu, на cr-ubu: `docker load < /tmp/ferag-backend.tar.gz`. Затем остановить и удалить контейнер ferag и запустить заново той же командой `docker run ...` (или скриптом с подстановкой .env), как в предыдущем подразделе.
 
+### Быстрый деплой после правок (скрипты)
+
+Из корня репозитория можно выкатывать изменения одной-двумя командами:
+
+| Скрипт | Назначение |
+|--------|------------|
+| `./scripts/deploy-frontend.sh` | Сборка Vue (`npm run build`), загрузка `dist/` на cr-ubu, копирование в `/var/www/ferag/`. Требуется SSH к cr-ubu под **user1** (или `DEPLOY_USER`). |
+| `./scripts/deploy-backend.sh` | Сборка образа backend, экспорт, загрузка на cr-ubu, `docker load` и перезапуск контейнера ferag. Требуется ключ **cursor-agent** (`.ssh/cursor_agent_key`). В `~/ferag-deploy/.env` на cr-ubu должны быть актуальные переменные (в т.ч. хосты 10.7.0.3). |
+
+Переменные окружения (опционально): `DEPLOY_HOST=176.108.244.252`, `DEPLOY_USER=user1` (для frontend), `SSH_KEY`, `KNOWN_HOSTS` (для backend). Подробнее: [docs/chats/26-0219-2034_next_steps.md](../docs/chats/26-0219-2034_next_steps.md).
+
+### Деплой силами AI-агента (без участия пользователя)
+
+Агент может выполнять быстрый деплой **самостоятельно**, если выполнена одноразовая настройка.
+
+**Backend:** агент уже может запускать `./scripts/deploy-backend.sh`: скрипт использует ключ `cursor_agent_key` и пользователя `cursor-agent`. При запуске команды агенту нужно выдать права **network** и **all** (для `docker build` и `docker save`).
+
+**Frontend:** по умолчанию скрипт рассчитан на user1 и `sudo` на сервере, к чему у агента нет доступа. Чтобы агент мог деплоить frontend сам:
+
+1. **Один раз на cr-ubu** (под user1 с sudo): привязать каталог, отдаваемый Nginx, к директории в домашнем каталоге cursor-agent и разрешить Nginx (www-data) проход по симлинку:
+   ```bash
+   sudo mkdir -p /home/cursor-agent/ferag-www
+   sudo chown cursor-agent:cursor-agent /home/cursor-agent/ferag-www
+   sudo rm -rf /var/www/ferag
+   sudo ln -s /home/cursor-agent/ferag-www /var/www/ferag
+   sudo chmod o+x /home/cursor-agent
+   ```
+   Без `chmod o+x` на `/home/cursor-agent` Nginx не сможет пройти по симлинку (каталог по умолчанию 750) и будет отдавать 500. После этого Nginx продолжит отдавать файлы из `/var/www/ferag` (симлинк на `~/ferag-www` cursor-agent).
+
+2. Деплой frontend агентом: запускать скрипт в режиме cursor-agent:
+   ```bash
+   DEPLOY_USE_CURSOR_AGENT=1 ./scripts/deploy-frontend.sh
+   ```
+   Скрипт соберёт фронт, загрузит `dist/` в `~/ferag-www/` на cr-ubu по ключу `cursor_agent_key`. Права при вызове: **network**.
+
+**Итог:** после п. 1 агент может по запросу выполнять оба деплоя: backend — с правами network + all, frontend — с `DEPLOY_USE_CURSOR_AGENT=1` и network. Помощь пользователя не нужна (ключ и .env на сервере уже настроены).
+
+### Порядок действий AI-агента при быстром деплое
+
+При запросе пользователя выкатить изменения на cr-ubu агент выполняет:
+
+| Шаг | Действие | Права при вызове |
+|-----|----------|-------------------|
+| 1 | Уточнить объём: только frontend, только backend или оба. Если не указано — выполнить оба (сначала backend, затем frontend). | — |
+| 2 | **Backend** (если нужен): из корня репозитория выполнить `./scripts/deploy-backend.sh`. Дождаться завершения. | **network**, **all** |
+| 3 | **Frontend** (если нужен): из корня репозитория выполнить `DEPLOY_USE_CURSOR_AGENT=1 ./scripts/deploy-frontend.sh`. Дождаться завершения. | **network** |
+| 4 | Сообщить пользователю об успешном завершении и предложить проверить https://ontoline.ru/ferag/ | — |
+
+**Условия:** ключ `.ssh/cursor_agent_key` и `known_hosts` в репозитории; на cr-ubu в `~/ferag-deploy/.env` актуальные переменные (backend); для frontend — выполнена одноразовая настройка (симлинк `/var/www/ferag` → `~/ferag-www`, `chmod o+x /home/cursor-agent`). Правило для агента: [.cursor/rules/deploy-cr-ubu-ssh.mdc](../.cursor/rules/deploy-cr-ubu-ssh.mdc).
+
 ---
 
 ## Команды развёртывания
