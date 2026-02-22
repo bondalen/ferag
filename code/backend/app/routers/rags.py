@@ -22,7 +22,7 @@ from app.fuseki_admin import (
     rag_triples_dataset,
     sparql_update,
 )
-from app.models import RagInstance, RagMember, Task, UploadCycle, User
+from app.models import ChatMessage, RagInstance, RagMember, Task, UploadCycle, User
 
 router = APIRouter()
 
@@ -236,6 +236,16 @@ class ChatResponse(BaseModel):
     context_used: int
 
 
+class ChatMessageListItem(BaseModel):
+    id: int
+    role: str
+    content: str
+    context_used: int | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
 @router.post("/{rag_id}/cycles/{cycle_id}/approve", response_model=ApproveResponse)
 def approve_cycle(
     rag_id: int,
@@ -336,7 +346,35 @@ def chat(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"LLM error: {e}",
         )
+    db.add(ChatMessage(rag_id=rag_id, user_id=current_user.id, role="user", content=body.question, context_used=None))
+    db.add(ChatMessage(rag_id=rag_id, user_id=current_user.id, role="assistant", content=answer, context_used=context_used))
+    db.commit()
     return ChatResponse(answer=answer, context_used=context_used)
+
+
+@router.get("/{rag_id}/chat/messages", response_model=list[ChatMessageListItem])
+def get_chat_messages(
+    rag_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    limit: int = 50,
+    offset: int = 0,
+):
+    """
+    Список сообщений диалога по RAG для текущего пользователя (хронологически, старые сверху).
+    """
+    rag = _can_access_rag(db, current_user, rag_id)
+    if not rag:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RAG not found")
+    rows = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.rag_id == rag_id, ChatMessage.user_id == current_user.id)
+        .order_by(ChatMessage.created_at.asc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    return rows
 
 
 @router.get("/{rag_id}", response_model=RAGResponse)

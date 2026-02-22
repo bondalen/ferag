@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
-import { sendQuestion } from '@/api/chat'
+import { sendQuestion, getChatMessages } from '@/api/chat'
 import MessageBubble from '@/components/MessageBubble.vue'
 
 const route = useRoute()
@@ -9,8 +9,22 @@ const ragId = computed(() => Number(route.params.id))
 
 const question = ref('')
 const loading = ref(false)
-const messages = ref<{ role: 'user' | 'assistant'; text: string; contextUsed?: number }[]>([])
+const messages = ref<{ id?: number; role: 'user' | 'assistant'; text: string; contextUsed?: number }[]>([])
 const error = ref('')
+
+onMounted(async () => {
+  try {
+    const list = await getChatMessages(ragId.value)
+    messages.value = list.map((m) => ({
+      id: m.id,
+      role: m.role as 'user' | 'assistant',
+      text: m.content,
+      contextUsed: m.context_used ?? undefined,
+    }))
+  } catch {
+    messages.value = []
+  }
+})
 
 async function ask() {
   if (!question.value.trim()) return
@@ -42,7 +56,7 @@ async function ask() {
     <div class="messages">
       <MessageBubble
         v-for="(msg, i) in messages"
-        :key="i"
+        :key="msg.id ?? `local-${i}`"
         :role="msg.role"
         :text="msg.text"
         :context-used="msg.contextUsed"

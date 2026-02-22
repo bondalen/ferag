@@ -68,6 +68,24 @@ class UploadCycle(Base):
     source_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    rag_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("rag_instances.id"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False, index=True
+    )
+    role: Mapped[str] = mapped_column(Text, nullable=False)  # 'user' | 'assistant'
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    context_used: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)  # только для assistant
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default="now()", nullable=False
+    )
+
+
 class Task(Base):
     __tablename__ = "tasks"
 
