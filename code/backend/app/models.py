@@ -68,10 +68,29 @@ class UploadCycle(Base):
     source_content: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
 
+class ChatSession(Base):
+    __tablename__ = "chat_sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    rag_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("rag_instances.id"), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id"), nullable=False, index=True
+    )
+    title: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default="now()", nullable=False
+    )
+
+
 class ChatMessage(Base):
     __tablename__ = "chat_messages"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    session_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     rag_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("rag_instances.id"), nullable=False, index=True
     )

@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
 
-from fastapi import APIRouter, Depends, File, HTTPException, status, UploadFile
+from fastapi import APIRouter, Body, Depends, File, HTTPException, status, UploadFile
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -22,7 +22,7 @@ from app.fuseki_admin import (
     rag_triples_dataset,
     sparql_update,
 )
-from app.models import ChatMessage, RagInstance, RagMember, Task, UploadCycle, User
+from app.models import ChatMessage, ChatSession, RagInstance, RagMember, Task, UploadCycle, User
 
 router = APIRouter()
 
@@ -77,6 +77,30 @@ def _can_access_rag(db: Session, user: User, rag_id: int) -> RagInstance | None:
 
 def _is_owner(user: User, rag: RagInstance) -> bool:
     return rag.owner_id == user.id
+
+
+def _get_default_session(db: Session, rag_id: int, user_id: int) -> ChatSession:
+    """Последняя по created_at сессия пользователя по RAG или новая с title=None."""
+    session = (
+        db.query(ChatSession)
+        .filter(ChatSession.rag_id == rag_id, ChatSession.user_id == user_id)
+        .order_by(ChatSession.created_at.desc())
+        .first()
+    )
+    if session:
+        return session
+    session = ChatSession(rag_id=rag_id, user_id=user_id, title=None)
+    db.add(session)
+    db.flush()
+    return session
+
+
+def _get_session_for_user(db: Session, session_id: int, rag_id: int, user_id: int) -> ChatSession | None:
+    """Сессия с проверкой: rag_id и user_id совпадают."""
+    s = db.get(ChatSession, session_id)
+    if not s or s.rag_id != rag_id or s.user_id != user_id:
+        return None
+    return s
 
 
 @router.post("", response_model=RAGResponse)
@@ -229,6 +253,33 @@ class ApproveResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     question: str
+    session_id: int | None = None
+
+
+class ChatSessionCreate(BaseModel):
+    title: str | None = None
+
+
+class ChatSessionListItem(BaseModel):
+    id: int
+    title: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ChatSessionDetail(BaseModel):
+    id: int
+    rag_id: int
+    user_id: int
+    title: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ChatSessionUpdate(BaseModel):
+    title: str | None = None
 
 
 class ChatResponse(BaseModel):
@@ -346,8 +397,32 @@ def chat(
             status_code=status.HTTP_502_BAD_GATEWAY,
             detail=f"LLM error: {e}",
         )
-    db.add(ChatMessage(rag_id=rag_id, user_id=current_user.id, role="user", content=body.question, context_used=None))
-    db.add(ChatMessage(rag_id=rag_id, user_id=current_user.id, role="assistant", content=answer, context_used=context_used))
+    if body.session_id is not None:
+        session = _get_session_for_user(db, body.session_id, rag_id, current_user.id)
+        if not session:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    else:
+        session = _get_default_session(db, rag_id, current_user.id)
+    db.add(
+        ChatMessage(
+            session_id=session.id,
+            rag_id=rag_id,
+            user_id=current_user.id,
+            role="user",
+            content=body.question,
+            context_used=None,
+        )
+    )
+    db.add(
+        ChatMessage(
+            session_id=session.id,
+            rag_id=rag_id,
+            user_id=current_user.id,
+            role="assistant",
+            content=answer,
+            context_used=context_used,
+        )
+    )
     db.commit()
     return ChatResponse(answer=answer, context_used=context_used)
 
@@ -357,24 +432,136 @@ def get_chat_messages(
     rag_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    session_id: int | None = None,
     limit: int = 50,
     offset: int = 0,
 ):
     """
-    Список сообщений диалога по RAG для текущего пользователя (хронологически, старые сверху).
+    Сообщения диалога: при session_id — этой сессии (своей); иначе — последняя/дефолтная сессия пользователя по RAG.
     """
     rag = _can_access_rag(db, current_user, rag_id)
     if not rag:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RAG not found")
+    if session_id is not None:
+        session = _get_session_for_user(db, session_id, rag_id, current_user.id)
+        if not session:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    else:
+        session = _get_default_session(db, rag_id, current_user.id)
     rows = (
         db.query(ChatMessage)
-        .filter(ChatMessage.rag_id == rag_id, ChatMessage.user_id == current_user.id)
+        .filter(ChatMessage.session_id == session.id)
         .order_by(ChatMessage.created_at.asc())
         .offset(offset)
         .limit(limit)
         .all()
     )
     return rows
+
+
+@router.post("/{rag_id}/chat/sessions", response_model=ChatSessionDetail, status_code=status.HTTP_201_CREATED)
+def create_chat_session(
+    rag_id: int,
+    body: ChatSessionCreate | None = Body(None),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Создать сессию диалога. user_id = current_user.id."""
+    rag = _can_access_rag(db, current_user, rag_id)
+    if not rag:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RAG not found")
+    title = body.title if body else None
+    session = ChatSession(rag_id=rag_id, user_id=current_user.id, title=title)
+    db.add(session)
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+@router.get("/{rag_id}/chat/sessions", response_model=list[ChatSessionListItem])
+def list_chat_sessions(
+    rag_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Список сессий текущего пользователя по RAG (по created_at DESC)."""
+    rag = _can_access_rag(db, current_user, rag_id)
+    if not rag:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RAG not found")
+    rows = (
+        db.query(ChatSession)
+        .filter(ChatSession.rag_id == rag_id, ChatSession.user_id == current_user.id)
+        .order_by(ChatSession.created_at.desc())
+        .all()
+    )
+    return rows
+
+
+@router.get("/{rag_id}/chat/sessions/{session_id}/messages", response_model=list[ChatMessageListItem])
+def get_session_messages(
+    rag_id: int,
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    limit: int = 50,
+    offset: int = 0,
+):
+    """Сообщения сессии. Проверка: сессия своя и rag_id совпадает."""
+    rag = _can_access_rag(db, current_user, rag_id)
+    if not rag:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RAG not found")
+    session = _get_session_for_user(db, session_id, rag_id, current_user.id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    rows = (
+        db.query(ChatMessage)
+        .filter(ChatMessage.session_id == session_id)
+        .order_by(ChatMessage.created_at.asc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    return rows
+
+
+@router.patch("/{rag_id}/chat/sessions/{session_id}", response_model=ChatSessionListItem)
+def update_chat_session(
+    rag_id: int,
+    session_id: int,
+    body: ChatSessionUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Обновить title сессии. Только своя сессия."""
+    rag = _can_access_rag(db, current_user, rag_id)
+    if not rag:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RAG not found")
+    session = _get_session_for_user(db, session_id, rag_id, current_user.id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    if body.title is not None:
+        session.title = body.title
+    db.commit()
+    db.refresh(session)
+    return session
+
+
+@router.delete("/{rag_id}/chat/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_chat_session(
+    rag_id: int,
+    session_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Удалить сессию и её сообщения (CASCADE). Только своя сессия."""
+    rag = _can_access_rag(db, current_user, rag_id)
+    if not rag:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="RAG not found")
+    session = _get_session_for_user(db, session_id, rag_id, current_user.id)
+    if not session:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+    db.delete(session)
+    db.commit()
 
 
 @router.get("/{rag_id}", response_model=RAGResponse)
