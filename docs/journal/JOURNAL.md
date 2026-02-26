@@ -310,6 +310,7 @@
 - **Архитектура:**
   - **MillenniumDB** — источник истины (RDF, SPARQL, OWL, inference)
   - **PostgreSQL + AGE** — рабочий кэш (проекция для быстрых запросов)
+- *Позже MillenniumDB заменён на Apache Jena Fuseki (2026-02-10), см. запись ниже.*
 
 ### 4. Отказ от LightRAG в пользу MS GraphRAG
 

@@ -73,6 +73,7 @@ data/processed/
 graphs/
 neo4j-data/
 falkordb-data/
+millenniumdb-data/
 *.cypher
 *.rdf
 *.ttl

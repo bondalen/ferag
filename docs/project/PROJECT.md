@@ -30,7 +30,7 @@
 | Графовый RAG | Построение графа знаний из текста и ответы на сложные/глобальные вопросы. |
 | Онтология как ядро | Создание и развитие онтологии, структурирующей извлечённые триплеты. |
 | Диалектический цикл | Новые данные → синтез → обогащённая онтология → цикл. |
-| Визуализация | Инструменты для графа и онтологий (Protégé, QGIS). |
+| Визуализация | В веб-приложении — WebVOWL (схема онтологии), Cytoscape.js (граф знаний); вне приложения — Protégé, QGIS. |
 | Воспроизводимая среда | Windows + WSL2 + Cursor + Ollama + Docker. |
 
 ---
@@ -40,7 +40,7 @@
 Железо и детали платформы: [PROJECT-001](PROJECT-001.md).
 
 **Платформа:** GMKtec NucBox K8 Plus (Ryzen 7 8845HS, 64 ГБ ОЗУ, iGPU Radeon 780M 8 ГБ).  
-**Стек:** Windows 11 + WSL2 (Ubuntu), Cursor, Ollama / LM Studio, Docker, Apache Jena Fuseki (RDF/SPARQL, онтология), MS GraphRAG, LlamaIndex (Schema Induction). PostgreSQL + AGE + pgvector — в перспективе (проекции, RAG).
+**Стек:** Windows 11 + WSL2 (Ubuntu), Cursor, Ollama / LM Studio, Docker, Apache Jena Fuseki (RDF/SPARQL, онтология), MS GraphRAG, LlamaIndex (Schema Induction). Frontend: Vue 3 + Quasar + Pinia (SPA). Визуализация в приложении: WebVOWL (онтология), Cytoscape.js (граф инстансов). PostgreSQL + AGE + pgvector — в перспективе (проекции, RAG).
 
 ---
 
@@ -61,6 +61,10 @@
 
 ```
 ferag/
+├── code/
+│   ├── backend/          # FastAPI, БД приложения (ferag_app), Fuseki Admin API
+│   ├── frontend/         # Vue 3 + Vite SPA (маршрут /ferag/)
+│   └── worker/           # Celery (GraphRAG, Schema Induction, merge, staging)
 ├── docs/
 │   ├── project/          # Проектная документация (PROJECT.md + тома)
 │   ├── tasks/            # Задачи (TASKS.md)
@@ -75,20 +79,21 @@ ferag/
 
 ---
 
-## Текущий статус и следующий рубеж (15.02.2026)
+## Текущий статус и следующий рубеж (22.02.2026)
 
 - **Цикл построения графа** выполнен по плану 26-0210-1500: Fuseki, GraphRAG, Schema Induction, два цикла, слияние онтологий и триплетов, ferag-prod (756 триплетов). Резюме: [docs/chats/26-0210-1500_plan_resume.md](../chats/26-0210-1500_plan_resume.md).
 - **Минимальный RAG/диалог** достигнут по плану 26-0213-1049: вопрос → контекст из графа → LLM → ответ. Резюме: [docs/chats/26-0213-1049_plan_resume.md](../chats/26-0213-1049_plan_resume.md).
 - **Вариант A (контекст по словам вопроса)** реализован по плану 26-0215-1600: ключевые слова из вопроса → SPARQL по сущностям и связям → сборка контекста; при пустой выборке — fallback на фиксированную выборку. По умолчанию `rag_chat.py` использует контекст по вопросу. Резюме: [docs/chats/26-0215-1600_plan_resume.md](../chats/26-0215-1600_plan_resume.md).
-- **Архитектура веб-приложения** спроектирована (2026-02-15): двухмашинная топология (cr-ubu + nb-win + WireGuard), стек FastAPI/Vue/Celery/Redis, маршрутизация под `/ferag/`, один контейнер на cr-ubu. Реализация не начата. Подробности: [PROJECT-004](PROJECT-004.md).
-- **Готовность рабочего процесса:** диалог с LLM по сохранённым данным (RAG) достигнут; ретривер привязан к словам вопроса. Следующий рубеж: веб-приложение (Блок 9 в TASKS.md), затем проекции (PostgreSQL/AGE/pgvector).
-- **Чат по RAG в веб-приложении:** сейчас одношаговый (вопрос → RAG-контекст → ответ), история не сохраняется. Запланировано: сохранение истории диалога в БД, передача контекста диалога в LLM (скользящее окно), при длинных чатах — сжатие/резюме. Порядок работы и варианты: [PROJECT-004-chat-dialogue](PROJECT-004-chat-dialogue.md).
+- **Веб-приложение** развёрнуто на cr-ubu: FastAPI (code/backend), Vue 3 SPA (code/frontend), Celery worker (code/worker), маршрутизация под `/ferag/`. Подробности: [PROJECT-004](PROJECT-004.md), [deploy/DEPLOYMENT_SUMMARY.md](../../deploy/DEPLOYMENT_SUMMARY.md).
+- **Готовность рабочего процесса:** диалог с LLM по сохранённым данным (RAG) достигнут; ретривер привязан к словам вопроса. Следующий рубеж: переход фронтенда на Quasar + Pinia (план 26-0226-1455), затем проекции (PostgreSQL/AGE/pgvector).
+- **Чат по RAG в веб-приложении:** история сохраняется в БД (chat_messages), сессии диалогов (chat_sessions, CRUD) реализованы (планы 26-0222-0935, 26-0222-2025). Запланировано: контекст диалога в LLM (в рамках сжатия 9.13), сжатие длинных диалогов. Порядок работы: [PROJECT-004-chat-dialogue](PROJECT-004-chat-dialogue.md).
 
 ---
 
 ## Ссылки
 
 - **Задачи:** [docs/tasks/TASKS.md](../tasks/TASKS.md)
+- **Правила задач:** [RULES-tasks](RULES-tasks.md) (модель задач, DAG, нумерация, ссылки A*B)
 - **Журнал:** [docs/journal/JOURNAL.md](../journal/JOURNAL.md)
 - **Тома проектной документации:**
   - [PROJECT-001](PROJECT-001.md) — железо и платформа (конфигурация, dual-boot, eGPU)
@@ -96,4 +101,5 @@ ferag/
   - [PROJECT-003](PROJECT-003.md) — перспективы (LLM-ревизия слияния, этапы развития), источники решений
   - [PROJECT-004](PROJECT-004.md) — веб-приложение и развёртывание (FastAPI, Vue, Celery, двухмашинная топология)
   - [PROJECT-004-chat-dialogue](PROJECT-004-chat-dialogue.md) — диалог по RAG (чат): текущее состояние, порядок доработки (история, контекст, сжатие)
+  - [PROJECT-005-frontend-visualization](PROJECT-005-frontend-visualization.md) — стек фронтенда (Quasar, Pinia) и визуализация (WebVOWL, Cytoscape.js)
 - **Быстрый деплой:** порядок действий AI-агента при выкатке на cr-ubu — [PROJECT-004, п. 11](PROJECT-004.md), [deploy/DEPLOYMENT_SUMMARY.md](../../deploy/DEPLOYMENT_SUMMARY.md), правило [.cursor/rules/deploy-cr-ubu-ssh.mdc](../../.cursor/rules/deploy-cr-ubu-ssh.mdc).

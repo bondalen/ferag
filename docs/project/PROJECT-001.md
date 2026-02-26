@@ -45,7 +45,7 @@
 | **Fedora 43** (планируется) | Нативная Linux-среда для тяжёлых вычислений, индексации больших корпусов, моделей 70B+. |
 | **Cursor** | IDE (форк VS Code), интеграция с WSL, связь с Ollama (http://localhost:11434) для автодополнения. Cursor Agent CLI для помощи в терминале. |
 | **Ollama** | Локальный запуск LLM (Llama 3.3 70B Q4_K_M, DeepSeek-R1) для извлечения триплетов, Schema Induction и диалога с пользователем. |
-| **Docker Desktop** | Запуск БД (PostgreSQL, MillenniumDB) и сервисов RAG в контейнерах. |
+| **Docker Desktop** | Запуск БД (PostgreSQL, Apache Jena Fuseki) и сервисов RAG в контейнерах. |
 | **MS GraphRAG** | Фреймворк для построения графа знаний с community detection и entity resolution. Основной инструмент извлечения триплетов. |
 | **PostgreSQL 16** | Реляционная СУБД как основа multi-model решения (граф + реляционная + векторный поиск). |
 | **Apache AGE** | Графовое расширение PostgreSQL (Property Graph, Cypher). Рабочий кэш для быстрых запросов. |

@@ -105,13 +105,15 @@ async function saveRename(sessionId: number) {
   const title = editTitle.value.trim() || null
   try {
     await updateSession(ragId.value, sessionId, title)
-    const session = sessions.value.find((s) => s.id === sessionId)
-    if (session) session.title = title
+    sessions.value = sessions.value.map((s) =>
+      s.id === sessionId ? { ...s, title } : s
+    )
+    editingSessionId.value = null
+    editTitle.value = ''
   } catch {
     error.value = 'Ошибка переименования'
+    // поле остаётся открытым, можно повторить или отменить по Escape
   }
-  editingSessionId.value = null
-  editTitle.value = ''
 }
 
 async function removeSession(sessionId: number, e: Event) {
@@ -182,7 +184,7 @@ async function ask() {
                 type="text"
                 class="session-edit-input"
                 placeholder="Название диалога"
-                @keydown.enter="saveRename(s.id)"
+                @keydown.enter.prevent="saveRename(s.id)"
                 @keydown.escape="cancelRename"
                 @blur="saveRename(s.id)"
               />

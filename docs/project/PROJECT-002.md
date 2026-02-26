@@ -220,12 +220,12 @@ Community Detection → подсказки для классов онтолог�
 ### 7.3. Три подхода к онтологиям
 
 1. **Pydantic-схемы** — быстрый старт, валидация, без inference.  
-2. **WebProtégé + Schema Induction** — формальная OWL, визуализация (рекомендуется).  
+2. **WebProtégé + Schema Induction** — формальная OWL, визуализация (рекомендуется). В веб-приложении ferag визуализация онтологии выполняется через **WebVOWL** (VOWL-нотация), граф инстансов — через **Cytoscape.js**. Вне приложения по-прежнему возможен экспорт в WebProtégé (задача 6.12).  
 3. **Fuseki + SPARQL** — inference, формальная семантика (продвинутый).
 
 ### 7.4. Рекомендация
 
-Этап 1: PostgreSQL + AGE, Pydantic. Этап 2: Fuseki как источник истины, WebProtégé, Schema Induction. Этап 3: SPARQL inference.
+Этап 1: PostgreSQL + AGE, Pydantic. Этап 2: Fuseki как источник истины, WebProtégé, Schema Induction. Этап 3: SPARQL inference. Встроенная визуализация в ferag: **WebVOWL** (схема онтологии), **Cytoscape.js** (граф инстансов). Подробности стека фронтенда и визуализации: [PROJECT-005](PROJECT-005-frontend-visualization.md).
 
 ### 7.5. Модель для Schema Induction
 
