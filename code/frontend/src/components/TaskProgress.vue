@@ -57,21 +57,37 @@ watch(() => props.taskId, () => {
 
 <template>
   <div class="task-progress">
-    <p v-for="(s, i) in steps" :key="i" :class="s.status">
-      {{ s.step || s.status }} <span v-if="s.error">{{ s.error }}</span>
-    </p>
+    <div v-if="steps.length === 0" class="row items-center q-gutter-sm text-body2 text-grey-7">
+      <q-spinner size="20" />
+      <span>Подключение…</span>
+    </div>
+    <q-list v-else bordered separator class="rounded-borders">
+      <q-item
+        v-for="(s, i) in steps"
+        :key="i"
+        class="q-py-xs"
+        :class="s.status === 'done' ? 'text-positive' : s.status === 'failed' ? 'text-negative' : 'text-grey-7'"
+      >
+        <q-item-section side>
+          <q-icon
+            :name="s.status === 'done' ? 'check_circle' : s.status === 'failed' ? 'error' : 'schedule'"
+            :color="s.status === 'done' ? 'positive' : s.status === 'failed' ? 'negative' : 'grey'"
+            size="sm"
+          />
+        </q-item-section>
+        <q-item-section>
+          <q-item-label class="text-body2">
+            {{ s.step || s.status }}
+            <span v-if="s.error" class="q-ml-sm">{{ s.error }}</span>
+          </q-item-label>
+        </q-item-section>
+      </q-item>
+    </q-list>
   </div>
 </template>
 
 <style scoped>
-.task-progress p {
-  margin: 0.25rem 0;
-  font-size: 0.9rem;
-}
-.task-progress p.done {
-  color: var(--vt-c-green);
-}
-.task-progress p.failed {
-  color: var(--vt-c-red);
+.task-progress {
+  max-width: 100%;
 }
 </style>

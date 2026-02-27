@@ -41,6 +41,7 @@ docker run -d --name ferag --restart unless-stopped --network bridge -p 127.0.0.
   -e CELERY_BROKER_URL="$CELERY_BROKER_URL" \
   -e CELERY_RESULT_BACKEND="$CELERY_RESULT_BACKEND" \
   -e JWT_SECRET="$JWT_SECRET" \
+  -e JWT_EXPIRE_MINUTES="${JWT_EXPIRE_MINUTES:-480}" \
   -e FUSEKI_URL="$FUSEKI_URL" \
   -e FUSEKI_USER="$FUSEKI_USER" \
   -e FUSEKI_PASSWORD="$FUSEKI_PASSWORD" \

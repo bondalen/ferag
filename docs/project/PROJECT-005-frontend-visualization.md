@@ -2,7 +2,7 @@
 
 Том проектной документации: целевой стек веб-интерфейса ferag (Quasar, Pinia) и библиотеки визуализации онтологий и графа знаний (WebVOWL, Cytoscape.js).
 
-**Статус:** решения зафиксированы (2026-02-22). Миграция текущего Vue 3 SPA на Quasar + Pinia и внедрение визуализации — отдельные планы/чаты.  
+**Статус:** решения зафиксированы (2026-02-22). **Миграция на Quasar + Pinia выполнена** (2026-02-26, план 26-0226-1455): все экраны и компоненты на Quasar, store чата в Pinia с персистом выбранной сессии. Внедрение WebVOWL и Cytoscape.js — следующие планы (задел в шаге 5).  
 **Связанные документы:** [PROJECT-004](PROJECT-004.md) (стек, разд. 4 и 4.1), [PROJECT-002](PROJECT-002.md) (разд. 7.3–7.4), [TASKS.md](../tasks/TASKS.md) (Блок 7, задачи 7.1.1, 7.1.2; Блок 9, задача 9.5).
 
 ---
@@ -31,20 +31,20 @@
 
 Миграция с текущего Vue 3 SPA выполняется по отдельному плану (см. ниже «Текущее состояние» и описание целевого стека); новые экраны и доработки после перехода ведутся уже на целевом стеке.
 
-### 2.1. Текущее состояние фронтенда (для плана миграции)
+### 2.1. Текущее состояние фронтенда (актуализировано 26.02.2026)
 
-На момент 2026-02-22 в `code/frontend/`:
+После выполнения плана 26-0226-1455 (чат 6) в `code/frontend/`:
 
 | Элемент | Состояние |
 |--------|-----------|
 | Каркас | Vue 3 + Vite, Vue Router, сборка с `base: '/ferag/'` |
-| Pinia | Установлена и подключена в `main.ts`. Stores: `auth` (токен, логин/логаут), `rags` (список RAG, текущий RAG). Store для чата/сессий **нет** — состояние диалога (список сессий, выбранная сессия, сообщения) только в локальных `ref` в `ChatView.vue`. |
-| Персист | Не используется (нет pinia-plugin-persistedstate; выбранная сессия после F5 не восстанавливается из localStorage). |
-| UI | Без Quasar: свои компоненты (NavBar, TaskProgress, MessageBubble), разметка и стили в views. |
-| Визуализация | WebVOWL и Cytoscape.js не подключены. |
-| Экраны (views) | LoginView, RagsView, RagDetailView (вкладки: загрузка, диалог, участники), UploadView, ChatView, MembersView. |
+| UI | **Quasar** подключён (Vite-плагин): QLayout, QHeader, QToolbar, QCard, QList, QInput, QBtn, QTabs/QRouteTab, QBanner, QFile, QDialog и др. Все экраны и компоненты (NavBar, TaskProgress, MessageBubble) переведены на Quasar. Неиспользуемые шаблонные файлы (HomeView, AboutView, TheWelcome и др.) удалены. |
+| Pinia | Stores: `auth`, `rags`, **chat** (сессии по RAG, выбранная сессия, loadSessions, setCurrentSession, createSession, updateSessionTitle, removeSession). ChatView использует store. |
+| Персист | **pinia-plugin-persistedstate**: выбранная сессия по ragId сохраняется в localStorage (`ferag.chat.sessionByRag`), восстанавливается после F5. |
+| Визуализация | WebVOWL и Cytoscape.js не подключены (задел — шаг 5 плана 26-0226-1455). |
+| Экраны (views) | LoginView, RagsView, RagDetailView (вкладки: загрузка, диалог, участники), UploadView, ChatView, MembersView — все на Quasar. |
 
-Исходное состояние для плана перехода: расширить использование Pinia (store чата/сессий, персист выбранной сессии); подключить Quasar и поэкранно переводить UI на Quasar-компоненты; при появлении экранов онтологии/графа — подключить WebVOWL и Cytoscape.js по задачам 7.1.1, 7.1.2.
+Следующие шаги: задел WebVOWL/Cytoscape (зависимости, при необходимости заглушки маршрутов); при появлении API — экраны онтологии и графа (задачи 7.1.1, 7.1.2).
 
 ---
 

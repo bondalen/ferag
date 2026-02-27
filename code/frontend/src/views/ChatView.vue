@@ -1,49 +1,32 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useQuasar } from 'quasar'
 import {
   sendQuestion,
   getChatMessages,
-  getSessions,
-  createSession,
   getSessionMessages,
-  updateSession,
-  deleteSession,
-  type ChatSessionListItem,
 } from '@/api/chat'
+import type { ChatSessionListItem } from '@/api/chat'
+import { useChatStore } from '@/stores/chat'
 import MessageBubble from '@/components/MessageBubble.vue'
 
 const route = useRoute()
+const $q = useQuasar()
+const chatStore = useChatStore()
 const ragId = computed(() => Number(route.params.id))
 
 const question = ref('')
 const loading = ref(false)
-const sessions = ref<ChatSessionListItem[]>([])
-const currentSessionId = ref<number | null>(null)
 const messages = ref<{ id?: number; role: 'user' | 'assistant'; text: string; contextUsed?: number }[]>([])
 const error = ref('')
-const sessionsLoading = ref(true)
 const editingSessionId = ref<number | null>(null)
 const editTitle = ref('')
 
-async function loadSessions() {
-  try {
-    const list = await getSessions(ragId.value)
-    sessions.value = list
-    if (list.length > 0 && currentSessionId.value === null) {
-      currentSessionId.value = list[0]!.id
-    }
-  } catch {
-    sessions.value = []
-  } finally {
-    sessionsLoading.value = false
-  }
-}
-
 async function loadMessages() {
   try {
-    if (currentSessionId.value != null) {
-      const list = await getSessionMessages(ragId.value, currentSessionId.value)
+    if (chatStore.currentSessionId != null) {
+      const list = await getSessionMessages(ragId.value, chatStore.currentSessionId)
       messages.value = list.map((m) => ({
         id: m.id,
         role: m.role as 'user' | 'assistant',
@@ -65,24 +48,21 @@ async function loadMessages() {
 }
 
 onMounted(async () => {
-  sessionsLoading.value = true
-  await loadSessions()
+  await chatStore.loadSessions(ragId.value)
   await loadMessages()
 })
 
-watch(currentSessionId, () => {
+watch(() => chatStore.currentSessionId, () => {
   loadMessages()
 })
 
-async function selectSession(id: number) {
-  currentSessionId.value = id
+function selectSession(id: number) {
+  chatStore.setCurrentSession(id)
 }
 
 async function newDialog() {
   try {
-    const session = await createSession(ragId.value)
-    sessions.value = [{ id: session.id, title: session.title, created_at: session.created_at }, ...sessions.value]
-    currentSessionId.value = session.id
+    await chatStore.createSession(ragId.value)
     messages.value = []
   } catch (e: unknown) {
     const err = e as { response?: { data?: { detail?: string } } }
@@ -102,34 +82,33 @@ function cancelRename() {
 }
 
 async function saveRename(sessionId: number) {
+  if (editingSessionId.value !== sessionId) return
   const title = editTitle.value.trim() || null
   try {
-    await updateSession(ragId.value, sessionId, title)
-    sessions.value = sessions.value.map((s) =>
-      s.id === sessionId ? { ...s, title } : s
-    )
+    await chatStore.updateSessionTitle(ragId.value, sessionId, title)
     editingSessionId.value = null
     editTitle.value = ''
   } catch {
     error.value = 'Ошибка переименования'
-    // поле остаётся открытым, можно повторить или отменить по Escape
   }
 }
 
-async function removeSession(sessionId: number, e: Event) {
+function removeSession(sessionId: number, e: Event) {
   e.stopPropagation()
   if (editingSessionId.value === sessionId) cancelRename()
-  if (!confirm('Удалить этот диалог и все сообщения?')) return
-  try {
-    await deleteSession(ragId.value, sessionId)
-    sessions.value = sessions.value.filter((s) => s.id !== sessionId)
-    if (currentSessionId.value === sessionId) {
-      currentSessionId.value = sessions.value[0]?.id ?? null
+  $q.dialog({
+    title: 'Удалить диалог',
+    message: 'Удалить этот диалог и все сообщения?',
+    cancel: true,
+    persistent: true,
+  }).onOk(async () => {
+    try {
+      await chatStore.removeSession(ragId.value, sessionId)
       await loadMessages()
+    } catch {
+      error.value = 'Ошибка удаления'
     }
-  } catch {
-    error.value = 'Ошибка удаления'
-  }
+  })
 }
 
 function sessionTitle(s: ChatSessionListItem) {
@@ -144,20 +123,29 @@ async function ask() {
   loading.value = true
   error.value = ''
   try {
-    const res = await sendQuestion(ragId.value, q, currentSessionId.value ?? undefined)
+    const res = await sendQuestion(
+      ragId.value,
+      q,
+      chatStore.currentSessionId ?? undefined
+    )
     messages.value.push({
       role: 'assistant',
       text: res.answer,
       contextUsed: res.context_used,
     })
-    if (currentSessionId.value === null) {
-      await loadSessions()
-      if (sessions.value.length > 0) currentSessionId.value = sessions.value[0]!.id
+    if (chatStore.currentSessionId === null) {
+      await chatStore.loadSessions(ragId.value)
+      if (chatStore.sessions.length > 0) {
+        chatStore.setCurrentSession(chatStore.sessions[0]!.id)
+      }
     }
   } catch (e: unknown) {
     const err = e as { response?: { data?: { detail?: string } } }
     error.value = err.response?.data?.detail ?? 'Ошибка'
-    messages.value.push({ role: 'assistant', text: '(ошибка: ' + (error.value || 'неизвестная') + ')' })
+    messages.value.push({
+      role: 'assistant',
+      text: '(ошибка: ' + (error.value || 'неизвестная') + ')',
+    })
   } finally {
     loading.value = false
   }
@@ -165,191 +153,127 @@ async function ask() {
 </script>
 
 <template>
-  <div class="chat-view">
-    <div class="chat-header">
-      <h2>Диалог по RAG</h2>
-      <div class="sessions-panel">
-        <div class="sessions-label">Диалоги</div>
-        <button type="button" class="btn-new" @click="newDialog">+ Новый диалог</button>
-        <ul v-if="!sessionsLoading" class="sessions-list">
-          <li
-            v-for="s in sessions"
-            :key="s.id"
-            :class="{ active: currentSessionId === s.id }"
-            @click="editingSessionId !== s.id && selectSession(s.id)"
-          >
-            <template v-if="editingSessionId === s.id">
-              <input
-                v-model="editTitle"
-                type="text"
-                class="session-edit-input"
-                placeholder="Название диалога"
-                @keydown.enter.prevent="saveRename(s.id)"
-                @keydown.escape="cancelRename"
-                @blur="saveRename(s.id)"
-              />
-            </template>
-            <span v-else class="session-title">{{ sessionTitle(s) }}</span>
-            <span v-if="editingSessionId !== s.id" class="session-actions">
-              <button
-                type="button"
-                class="btn-rename-session"
-                title="Переименовать"
-                @click="startRename(s, $event)"
+  <div class="column q-gutter-md chat-view">
+    <div class="row q-col-gutter-md">
+      <div class="col-12 col-sm-auto">
+        <div class="text-h6 q-mb-sm">Диалог по RAG</div>
+        <q-card flat bordered class="sessions-card">
+          <q-card-section class="q-pa-sm">
+            <div class="text-caption text-grey-7 q-mb-xs">Диалоги</div>
+            <q-btn
+              flat
+              dense
+              no-caps
+              color="primary"
+              icon="add"
+              label="Новый диалог"
+              class="q-mb-sm full-width"
+              @click="newDialog"
+            />
+            <q-list v-if="!chatStore.sessionsLoading" bordered separator class="rounded-borders">
+              <q-item
+                v-for="s in chatStore.sessions"
+                :key="s.id"
+                :clickable="editingSessionId !== s.id"
+                :active="chatStore.currentSessionId === s.id"
+                active-class="bg-primary text-white"
+                class="q-py-xs"
+                @click="editingSessionId !== s.id && selectSession(s.id)"
               >
-                ✎
-              </button>
-              <button
-                type="button"
-                class="btn-delete-session"
-                title="Удалить диалог"
-                @click="removeSession(s.id, $event)"
-              >
-                ×
-              </button>
-            </span>
-          </li>
-        </ul>
-        <p v-else class="sessions-loading">Загрузка…</p>
+                <q-item-section>
+                  <q-input
+                    v-if="editingSessionId === s.id"
+                    v-model="editTitle"
+                    dense
+                    outlined
+                    placeholder="Название диалога"
+                    class="session-edit-input"
+                    @keydown.enter.prevent="saveRename(s.id)"
+                    @keydown.escape="cancelRename"
+                    @blur="saveRename(s.id)"
+                  />
+                  <q-item-label v-else class="text-body2 ellipsis">
+                    {{ sessionTitle(s) }}
+                  </q-item-label>
+                </q-item-section>
+                <q-item-section v-if="editingSessionId !== s.id" side>
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="edit"
+                    aria-label="Переименовать"
+                    @click.stop="startRename(s, $event)"
+                  />
+                  <q-btn
+                    flat
+                    dense
+                    round
+                    size="sm"
+                    icon="delete"
+                    aria-label="Удалить"
+                    color="negative"
+                    @click.stop="removeSession(s.id, $event)"
+                  />
+                </q-item-section>
+              </q-item>
+            </q-list>
+            <div v-else class="q-py-sm text-body2 text-grey-7">
+              Загрузка…
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+      <div class="col">
+        <div class="messages column q-gutter-sm">
+          <MessageBubble
+            v-for="(msg, i) in messages"
+            :key="msg.id ?? `local-${i}`"
+            :role="msg.role"
+            :text="msg.text"
+            :context-used="msg.contextUsed"
+          />
+        </div>
+        <q-form class="column q-gutter-sm q-mt-md" @submit.prevent="ask">
+          <div class="row q-col-gutter-sm">
+            <q-input
+              v-model="question"
+              outlined
+              dense
+              placeholder="Вопрос..."
+              class="col"
+              :disable="loading"
+            />
+            <q-btn
+              type="submit"
+              color="primary"
+              label="Отправить"
+              no-caps
+              :loading="loading"
+              :disable="!question.trim()"
+            />
+          </div>
+          <q-banner v-if="error" rounded class="bg-negative text-white">
+            {{ error }}
+          </q-banner>
+        </q-form>
       </div>
     </div>
-    <div class="messages">
-      <MessageBubble
-        v-for="(msg, i) in messages"
-        :key="msg.id ?? `local-${i}`"
-        :role="msg.role"
-        :text="msg.text"
-        :context-used="msg.contextUsed"
-      />
-    </div>
-    <form @submit.prevent="ask" class="chat-form">
-      <input v-model="question" type="text" placeholder="Вопрос..." :disabled="loading" />
-      <button :disabled="loading">Отправить</button>
-    </form>
-    <p v-if="error" class="error">{{ error }}</p>
   </div>
 </template>
 
 <style scoped>
 .chat-view {
-  max-width: 720px;
-  display: flex;
-  flex-direction: column;
+  max-width: 900px;
 }
-.chat-header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: flex-start;
-  margin-bottom: 0.5rem;
+.sessions-card {
+  min-width: 220px;
 }
-.chat-header h2 {
-  margin: 0;
-}
-.sessions-panel {
-  flex: 1;
-  min-width: 180px;
-}
-.sessions-label {
-  font-size: 0.9rem;
-  color: var(--vt-c-text-2);
-  margin-bottom: 0.25rem;
-}
-.btn-new {
-  padding: 0.35rem 0.6rem;
-  font-size: 0.9rem;
-  margin-bottom: 0.5rem;
-}
-.sessions-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-}
-.sessions-list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0.4rem 0.5rem;
-  cursor: pointer;
-  border-radius: 4px;
-  gap: 0.5rem;
-}
-.sessions-list li:hover {
-  background: var(--vt-c-bg-soft);
-}
-.sessions-list li.active {
-  background: var(--vt-c-bg-soft);
-  font-weight: 500;
-}
-.session-title {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.9rem;
-}
-.session-edit-input {
-  flex: 1;
-  min-width: 0;
-  padding: 0.2rem 0.35rem;
-  font-size: 0.9rem;
-  border: 1px solid var(--vt-c-divider);
-  border-radius: 3px;
-}
-.session-actions {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.15rem;
-}
-.btn-rename-session {
-  padding: 0.1rem 0.35rem;
-  font-size: 0.95rem;
-  line-height: 1;
-  opacity: 0.7;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 3px;
-}
-.btn-rename-session:hover {
-  opacity: 1;
-  background: var(--vt-c-bg-soft);
-}
-.btn-delete-session {
-  flex-shrink: 0;
-  padding: 0.1rem 0.35rem;
-  font-size: 1.1rem;
-  line-height: 1;
-  opacity: 0.7;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  border-radius: 3px;
-}
-.btn-delete-session:hover {
-  opacity: 1;
-  background: var(--vt-c-red-muted);
-}
-.sessions-loading {
-  margin: 0;
-  font-size: 0.9rem;
-  color: var(--vt-c-text-2);
+.session-edit-input :deep(.q-field__control) {
+  min-height: 32px;
 }
 .messages {
-  margin-bottom: 1rem;
   min-height: 200px;
-}
-.chat-form {
-  display: flex;
-  gap: 0.5rem;
-}
-.chat-form input {
-  flex: 1;
-  padding: 0.5rem;
-}
-.error {
-  color: var(--vt-c-red);
-  margin-top: 0.5rem;
 }
 </style>

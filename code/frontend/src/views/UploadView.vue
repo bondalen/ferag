@@ -10,12 +10,23 @@ const route = useRoute()
 const ragsStore = useRagsStore()
 const ragId = computed(() => Number(route.params.id))
 
-const file = ref<File | null>(null)
+// QFile без multiple отдаёт File | null, не массив
+const fileList = ref<File | File[] | null>(null)
 const taskId = ref<number | null>(null)
 const cycleId = ref<number | null>(null)
 const uploadDone = ref(false)
 const approved = ref(false)
 const error = ref('')
+const uploading = ref(false)
+
+const hasFile = computed(() => {
+  const v = fileList.value
+  return Array.isArray(v) ? v.length > 0 : v != null
+})
+const file = computed((): File | null => {
+  const v = fileList.value
+  return Array.isArray(v) ? (v[0] ?? null) : (v ?? null)
+})
 
 onMounted(async () => {
   try {
@@ -30,30 +41,30 @@ onMounted(async () => {
   }
 })
 
-function onFileChange(e: Event) {
-  const target = e.target as HTMLInputElement
-  file.value = target.files?.[0] ?? null
-}
-
-async function doUpload() {
-  if (!file.value) return
-  error.value = ''
-  try {
-    const res = await uploadFile(ragId.value, file.value)
-    cycleId.value = res.cycle_id
-    taskId.value = res.task_id
-  } catch (e: unknown) {
-    const err = e as { response?: { data?: { detail?: string } } }
-    error.value = err.response?.data?.detail ?? 'Ошибка загрузки'
-  }
-}
-
 function onTaskDone() {
   uploadDone.value = true
 }
 
 function onTaskFailed(msg: string) {
   error.value = msg
+}
+
+async function doUpload() {
+  const f = file.value
+  if (!f) return
+  error.value = ''
+  uploading.value = true
+  try {
+    const res = await uploadFile(ragId.value, f)
+    cycleId.value = res.cycle_id
+    taskId.value = res.task_id
+    fileList.value = null
+  } catch (e: unknown) {
+    const err = e as { response?: { data?: { detail?: string } } }
+    error.value = err.response?.data?.detail ?? 'Ошибка загрузки'
+  } finally {
+    uploading.value = false
+  }
 }
 
 async function doApprove() {
@@ -71,31 +82,56 @@ async function doApprove() {
 </script>
 
 <template>
-  <div class="upload-view">
-    <h2>Загрузка файла</h2>
-    <p v-if="!taskId">Выберите текстовый файл (.txt) и нажмите «Загрузить».</p>
-    <div v-else>
-      <TaskProgress :task-id="taskId" @done="onTaskDone" @failed="onTaskFailed" />
-      <button v-if="uploadDone && !approved" @click="doApprove">Подтвердить цикл</button>
-      <p v-if="approved">Цикл подтверждён.</p>
-    </div>
-    <div v-if="!taskId" class="upload-form">
-      <input type="file" accept=".txt,text/plain" @change="onFileChange" />
-      <button :disabled="!file" @click="doUpload">Загрузить</button>
-    </div>
-    <p v-if="error" class="error">{{ error }}</p>
+  <div class="column q-gutter-md upload-view">
+    <q-card flat bordered>
+      <q-card-section>
+        <div class="text-h6 q-mb-sm">Загрузка файла</div>
+        <p v-if="!taskId" class="text-body2 text-grey-8 q-mb-md">
+          Выберите текстовый файл (.txt) и нажмите «Загрузить».
+        </p>
+        <template v-else>
+          <TaskProgress :task-id="taskId" @done="onTaskDone" @failed="onTaskFailed" />
+          <q-btn
+            v-if="uploadDone && !approved"
+            color="primary"
+            label="Подтвердить цикл"
+            no-caps
+            class="q-mt-sm"
+            @click="doApprove"
+          />
+          <q-banner v-if="approved" rounded class="bg-positive text-white q-mt-sm">
+            Цикл подтверждён.
+          </q-banner>
+        </template>
+        <div v-if="!taskId" class="column q-gutter-sm q-mt-md">
+          <q-file
+            v-model="fileList"
+            outlined
+            dense
+            label="Файл .txt"
+            accept=".txt,text/plain"
+            clearable
+            :disable="uploading"
+          />
+          <q-btn
+            color="primary"
+            label="Загрузить"
+            no-caps
+            :loading="uploading"
+            :disable="!hasFile"
+            @click="doUpload"
+          />
+        </div>
+        <q-banner v-if="error" rounded class="bg-negative text-white q-mt-md">
+          {{ error }}
+        </q-banner>
+      </q-card-section>
+    </q-card>
   </div>
 </template>
 
 <style scoped>
 .upload-view {
   max-width: 600px;
-}
-.upload-form {
-  margin-top: 1rem;
-}
-.error {
-  color: var(--vt-c-red);
-  margin-top: 0.5rem;
 }
 </style>

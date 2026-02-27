@@ -30,6 +30,10 @@ apiClient.interceptors.response.use(
   (err) => {
     if (err.response?.status === 401) {
       setStoredToken(null)
+      // Сбросить UI входа: auth store подписан на событие в App.vue
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('ferag:unauthorized'))
+      }
     }
     return Promise.reject(err)
   }

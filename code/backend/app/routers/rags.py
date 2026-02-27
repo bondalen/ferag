@@ -1,4 +1,5 @@
 """CRUD RAG-экземпляров: создание, список, по id, удаление, загрузка файла, approve цикла."""
+import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -375,6 +376,13 @@ def chat(
     }
     context = build_context_by_question(body.question, **sparql_kw)
     context_used = len(context)
+    _log = logging.getLogger(__name__)
+    if _log.isEnabledFor(logging.DEBUG):
+        snippet = context[:1200] + ("…" if len(context) > 1200 else "")
+        _log.debug(
+            "RAG context for question (rag_id=%s, %d chars): %s",
+            rag_id, context_used, snippet,
+        )
     client = get_llm_client(
         base_url=settings.llm_api_url,
         api_key="lm-studio",

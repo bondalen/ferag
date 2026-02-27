@@ -2,7 +2,6 @@
 import { ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import NavBar from '@/components/NavBar.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -38,50 +37,64 @@ async function submit() {
 </script>
 
 <template>
-  <NavBar />
-  <div class="login-page">
-    <form @submit.prevent="submit" class="login-form">
-      <h1>{{ mode === 'login' ? 'Вход' : 'Регистрация' }}</h1>
-      <input v-model="email" type="email" placeholder="Email" required />
-      <input v-model="password" type="password" placeholder="Пароль" required />
-      <input
-        v-if="mode === 'register'"
-        v-model="displayName"
-        type="text"
-        placeholder="Имя (необязательно)"
-      />
-      <p v-if="error" class="error">{{ error }}</p>
-      <button type="submit">{{ mode === 'login' ? 'Войти' : 'Зарегистрироваться' }}</button>
-      <button type="button" class="link" @click="mode = mode === 'login' ? 'register' : 'login'">
-        {{ mode === 'login' ? 'Нет аккаунта? Регистрация' : 'Уже есть аккаунт? Вход' }}
-      </button>
-    </form>
+  <div class="row justify-center q-pt-lg">
+    <q-card flat bordered class="login-card q-pa-md">
+      <q-card-section>
+        <div class="text-h5 q-mb-md">{{ mode === 'login' ? 'Вход' : 'Регистрация' }}</div>
+        <q-form class="column q-gutter-md" @submit.prevent="submit">
+          <q-input
+            v-model="email"
+            type="email"
+            label="Email"
+            outlined
+            dense
+            required
+            autocomplete="email"
+          />
+          <q-input
+            v-model="password"
+            type="password"
+            label="Пароль"
+            outlined
+            dense
+            required
+            autocomplete="current-password"
+          />
+          <q-input
+            v-if="mode === 'register'"
+            v-model="displayName"
+            type="text"
+            label="Имя (необязательно)"
+            outlined
+            dense
+            autocomplete="name"
+          />
+          <q-banner v-if="error" rounded class="bg-negative text-white q-mt-sm">
+            {{ error }}
+          </q-banner>
+          <q-btn
+            type="submit"
+            :label="mode === 'login' ? 'Войти' : 'Зарегистрироваться'"
+            color="primary"
+            no-caps
+            class="q-mt-sm"
+          />
+          <q-btn
+            flat
+            no-caps
+            color="primary"
+            :label="mode === 'login' ? 'Нет аккаунта? Регистрация' : 'Уже есть аккаунт? Вход'"
+            @click="mode = mode === 'login' ? 'register' : 'login'"
+          />
+        </q-form>
+      </q-card-section>
+    </q-card>
   </div>
 </template>
 
 <style scoped>
-.login-page {
-  padding: 2rem;
-  display: flex;
-  justify-content: center;
-}
-.login-form {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  max-width: 320px;
-}
-.login-form input {
-  padding: 0.5rem;
-}
-.login-form .error {
-  color: var(--vt-c-red);
-}
-.login-form .link {
-  background: none;
-  border: none;
-  color: var(--vt-c-brand-1);
-  cursor: pointer;
-  text-decoration: underline;
+.login-card {
+  max-width: 400px;
+  width: 100%;
 }
 </style>

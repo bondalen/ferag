@@ -3,7 +3,6 @@ import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useRagsStore } from '@/stores/rags'
 import * as ragsApi from '@/api/rags'
-import NavBar from '@/components/NavBar.vue'
 
 const router = useRouter()
 const ragsStore = useRagsStore()
@@ -19,7 +18,10 @@ async function createRag() {
   creating.value = true
   error.value = ''
   try {
-    const rag = await ragsApi.createRag({ name: name.value.trim(), description: description.value.trim() || undefined })
+    const rag = await ragsApi.createRag({
+      name: name.value.trim(),
+      description: description.value.trim() || undefined,
+    })
     await ragsStore.fetchList()
     name.value = ''
     description.value = ''
@@ -34,50 +36,68 @@ async function createRag() {
 </script>
 
 <template>
-  <NavBar />
-  <div class="rags-page">
-    <section class="create-form">
-      <h2>Создать RAG</h2>
-      <input v-model="name" type="text" placeholder="Название" />
-      <input v-model="description" type="text" placeholder="Описание (необязательно)" />
-      <p v-if="error" class="error">{{ error }}</p>
-      <button :disabled="creating" @click="createRag">Создать</button>
-    </section>
-    <section class="rag-list">
-      <h2>Мои RAG</h2>
-      <ul v-if="ragsStore.list.length">
-        <li v-for="rag in ragsStore.list" :key="rag.id">
-          <router-link :to="{ name: 'rag-detail', params: { id: String(rag.id) } }">
-            {{ rag.name }} (циклов: {{ rag.cycle_count }})
-          </router-link>
-        </li>
-      </ul>
-      <p v-else>Нет RAG. Создайте первый выше.</p>
-    </section>
+  <div class="column q-gutter-md">
+    <q-card flat bordered>
+      <q-card-section>
+        <div class="text-h6 q-mb-md">Создать RAG</div>
+        <q-form class="column q-gutter-sm" @submit.prevent="createRag">
+          <div class="row q-col-gutter-sm">
+            <q-input
+              v-model="name"
+              label="Название"
+              outlined
+              dense
+              class="col-xs-12 col-sm-auto"
+              style="min-width: 200px"
+              :disable="creating"
+            />
+            <q-input
+              v-model="description"
+              label="Описание (необязательно)"
+              outlined
+              dense
+              class="col-xs-12 col-sm"
+              :disable="creating"
+            />
+          </div>
+          <q-banner v-if="error" rounded class="bg-negative text-white">
+            {{ error }}
+          </q-banner>
+          <q-btn
+            type="submit"
+            label="Создать"
+            color="primary"
+            no-caps
+            :loading="creating"
+            :disable="!name.trim()"
+          />
+        </q-form>
+      </q-card-section>
+    </q-card>
+
+    <q-card flat bordered>
+      <q-card-section>
+        <div class="text-h6 q-mb-md">Мои RAG</div>
+        <q-list v-if="ragsStore.list.length" bordered separator>
+          <q-item
+            v-for="rag in ragsStore.list"
+            :key="rag.id"
+            clickable
+            :to="{ name: 'rag-detail', params: { id: String(rag.id) } }"
+          >
+            <q-item-section>
+              <q-item-label>{{ rag.name }}</q-item-label>
+              <q-item-label caption>Циклов: {{ rag.cycle_count }}</q-item-label>
+            </q-item-section>
+            <q-item-section side>
+              <q-icon name="chevron_right" />
+            </q-item-section>
+          </q-item>
+        </q-list>
+        <div v-else class="text-body2 text-grey-7 q-py-md">
+          Нет RAG. Создайте первый выше.
+        </div>
+      </q-card-section>
+    </q-card>
   </div>
 </template>
-
-<style scoped>
-.rags-page {
-  padding: 1.5rem;
-}
-.create-form,
-.rag-list {
-  margin-bottom: 2rem;
-}
-.create-form input,
-.create-form button {
-  margin-right: 0.5rem;
-  margin-bottom: 0.5rem;
-}
-.rag-list ul {
-  list-style: none;
-  padding: 0;
-}
-.rag-list li {
-  margin-bottom: 0.5rem;
-}
-.error {
-  color: var(--vt-c-red);
-}
-</style>

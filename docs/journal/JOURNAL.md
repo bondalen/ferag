@@ -518,6 +518,26 @@ MillenniumDB **НЕ поддерживает OWL/RDFS inference** (логиче�
 
 ---
 
+## 2026-02-26 — Чат 6: Quasar + Pinia, проверка интерфейса, 401/JWT
+
+**Событие:** Переход фронтенда на Quasar и расширение Pinia выполнен; полная проверка интерфейса; устранение 401 при истёкшем токене; увеличение срока жизни JWT.
+
+**Решения и действия:**
+
+1. **Quasar:** подключён (Vite-плагин), все экраны и компоненты переведены на Quasar (LoginView, RagsView, RagDetailView с QTabs/QRouteTab, ChatView, UploadView, MembersView; TaskProgress, MessageBubble). Удалены неиспользуемые файлы (HomeView, AboutView, TheWelcome, WelcomeItem, HelloWorld, components/icons).
+
+2. **Pinia:** store `chat` (сессии по RAG, выбранная сессия); pinia-plugin-persistedstate — персист `sessionByRag` в localStorage; выбранная сессия восстанавливается после F5.
+
+3. **Исправления:** кнопка «Загрузить» (QFile без `multiple` отдаёт один File, не массив — приведение типа и hasFile/file); при 401 — событие `ferag:unauthorized`, в App.vue logout и редирект на логин с `query.redirect`; в backend `jwt_expire_minutes` по умолчанию 480 (8 ч); в `deploy-backend.sh` передаётся `JWT_EXPIRE_MINUTES`.
+
+4. **Диагностика RAG:** скрипт `code/backend/scripts/diagnose_rag_context.py` для проверки контекста по вопросу; в плане — результаты проверки по датасету ferag-00026, предложения по улучшению индексации.
+
+**Задачи:** 9.5 [x] (миграция на Quasar + Pinia выполнена).
+
+**План:** [docs/chats/26-0226-1455_plan.md](../chats/26-0226-1455_plan.md).
+
+---
+
 ## Шаблон записи для новых событий
 
 ```markdown

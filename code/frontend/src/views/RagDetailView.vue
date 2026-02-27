@@ -2,39 +2,34 @@
 import { onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useRagsStore } from '@/stores/rags'
-import NavBar from '@/components/NavBar.vue'
 
 const route = useRoute()
 const ragsStore = useRagsStore()
 const ragId = computed(() => Number(route.params.id))
 
 onMounted(() => ragsStore.fetchCurrent(ragId.value))
+
+function tabTo(name: 'rag-upload' | 'rag-chat' | 'rag-members') {
+  return { name, params: { id: route.params.id } }
+}
 </script>
 
 <template>
-  <NavBar />
-  <div class="rag-detail">
-    <h1 v-if="ragsStore.current">{{ ragsStore.current.name }}</h1>
-    <nav class="tabs">
-      <router-link :to="{ name: 'rag-upload', params: { id: ragId } }" active-class="active">Загрузка</router-link>
-      <router-link :to="{ name: 'rag-chat', params: { id: ragId } }" active-class="active">Диалог</router-link>
-      <router-link :to="{ name: 'rag-members', params: { id: ragId } }" active-class="active">Участники</router-link>
-    </nav>
+  <div class="column q-gutter-md">
+    <div v-if="ragsStore.current" class="text-h5 text-weight-medium">
+      {{ ragsStore.current.name }}
+    </div>
+    <q-tabs
+      dense
+      align="left"
+      active-color="primary"
+      indicator-color="primary"
+      class="q-mb-sm"
+    >
+      <q-route-tab :to="tabTo('rag-upload')" label="Загрузка" />
+      <q-route-tab :to="tabTo('rag-chat')" label="Диалог" />
+      <q-route-tab :to="tabTo('rag-members')" label="Участники" />
+    </q-tabs>
     <router-view />
   </div>
 </template>
-
-<style scoped>
-.rag-detail {
-  padding: 1.5rem;
-}
-.tabs {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-.tabs a.active {
-  font-weight: bold;
-  text-decoration: none;
-}
-</style>
