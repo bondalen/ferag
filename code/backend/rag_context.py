@@ -3,6 +3,8 @@
 Выборка контекста из ferag-prod для RAG (план 26-0213-1049).
 Шаги 1.1.2, 1.1.3, 1.1.4: SPARQL-запросы и сборка текстового контекста.
 План 26-0215-1600: вариант A — привязка контекста к словам вопроса (1.2.x).
+План 26-0227-1338, шаг 3.1: расширение поиска — синонимы рус/англ, уточнение стоп-слов.
+План 26-0227-1338, шаг 3.2: тонкая настройка лимитов и fallback.
 """
 
 import re
@@ -18,19 +20,40 @@ FUSEKI = "http://localhost:3030"
 AUTH = ("admin", "ferag2026")
 DS = "ferag-prod"
 
-# Лимиты по плану 1.1.1
-ENTITY_LIMIT = 15
-RELATIONSHIP_LIMIT = 15
+# Лимиты по плану 1.1.1; 3.2: увеличены до 20 (не урезать важное, не раздувать промпт)
+ENTITY_LIMIT = 20
+RELATIONSHIP_LIMIT = 20
 
 # 1.2.1 Стоп-слова (рус/англ) для извлечения ключевых слов из вопроса
+# «работает»/«работать» убраны (план 3.1): расширяются синонимами works/work для совпадения с англ. описаниями
 STOP_WORDS = frozenset({
     "кто", "что", "где", "как", "какой", "какая", "какие", "почему", "когда",
     "какую", "какого", "чем", "который", "которой", "которых", "такой", "такое", "такая",
-    "работает", "работать",
     "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
     "have", "has", "had", "do", "does", "did", "will", "would", "could",
     "should", "may", "might", "must", "can", "this", "that", "these", "those",
 })
+
+# 3.1 Расширение поиска: синонимы для совпадения рус. вопросов с англ. описаниями в графе
+KEYWORD_SYNONYMS: dict[str, list[str]] = {
+    "основан": ["founded"],
+    "основана": ["founded"],
+    "основано": ["founded"],
+    "год": ["year"],
+    "году": ["year"],
+    "года": ["year"],
+    "технологии": ["technology", "technologies"],
+    "технология": ["technology"],
+    "компания": ["company", "corporation"],
+    "компании": ["company", "corporation"],
+    "использует": ["uses", "used"],
+    "используют": ["uses", "used"],
+    "работает": ["works", "work"],
+    "работать": ["works", "work"],
+    "возглавляет": ["leads", "leading"],
+    "должность": ["position", "role"],
+    "должности": ["position", "role"],
+}
 
 # 1.1.2 Фиксированная выборка сущностей: ferag#, rdf:type, опционально ferag:description
 ENTITIES_QUERY = """
@@ -124,9 +147,17 @@ def _sparql_str_escape(s: str) -> str:
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
+def _split_camel_case(token: str) -> list[str]:
+    """Разбить CamelCase на части (GraphRAG → graph, rag; DataWeave → data, weave)."""
+    # Разрез перед заглавной, следующей за строчной (Graph|RAG, Data|Weave)
+    parts = re.split(r"(?<=[a-z])(?=[A-Z])", token)
+    return [p.lower() for p in parts if len(p) >= 2]
+
+
 def extract_keywords(question: str) -> list[str]:
     """
     1.2.1 Извлечение ключевых слов из вопроса (план 26-0215-1600).
+    План 3.1: расширение синонимами (рус→англ), разбиение CamelCase для совпадения с графом.
     Вход: строка вопроса. Выход: список слов (токенов) в нижнем регистре.
     Разбиение по пробелам и знакам пунктуации, отброс стоп-слов и слишком коротких токенов.
     """
@@ -134,14 +165,28 @@ def extract_keywords(question: str) -> list[str]:
         return []
     # Токены: последовательности букв и цифр (в т.ч. CamelCase и кириллица)
     tokens = re.findall(r"[^\s\W]+", question.strip(), re.UNICODE)
-    out = []
+    out: list[str] = []
+    seen: set[str] = set()
+
+    def _add(kw: str) -> None:
+        if len(kw) < 2 or kw in STOP_WORDS or kw in seen:
+            return
+        seen.add(kw)
+        out.append(kw)
+        if kw in KEYWORD_SYNONYMS:
+            for syn in KEYWORD_SYNONYMS[kw]:
+                if syn not in seen:
+                    seen.add(syn)
+                    out.append(syn)
+
     for t in tokens:
         low = t.lower()
-        if len(low) < 2:
+        # 3.1 CamelCase (GraphRAG, DataWeave) → части для совпадения с GRAPH_RAG_INFRA и т.п.
+        if re.search(r"[A-Z]", t) and re.search(r"[a-z]", t):
+            for part in _split_camel_case(t):
+                _add(part)
             continue
-        if low in STOP_WORDS:
-            continue
-        out.append(low)
+        _add(low)
     return out
 
 
@@ -332,19 +377,31 @@ def _format_context(entities: list[dict], relationships: list[dict]) -> str:
     return "\n".join(lines)
 
 
+# 3.2 Сообщение при отсутствии совпадений (fallback не маскирует проблемы retrieval)
+CONTEXT_NO_MATCH = (
+    "=== Сущности ===\n"
+    "(По ключевым словам вопроса совпадений в графе не найдено.)\n\n"
+    "=== Связи ===\n"
+    "(пусто)"
+)
+
+
 def build_context_by_question(question: str, **sparql_kw) -> str:
     """
     1.2.4 Интеграция и fallback (вариант A): контекст по словам вопроса.
     1.2.1 (слова) → 1.2.2 и 1.2.3 (запросы) → сборка в формате 1.1.1.
-    Если 0 сущностей и 0 связей — возвращает результат build_context_fixed().
+    3.2 Fallback: только при пустых ключевых словах — build_context_fixed();
+    при наличии ключевых слов, но 0 совпадений — CONTEXT_NO_MATCH (не маскировать retrieval).
     """
     keywords = extract_keywords(question)
-    entities = fetch_entities_by_keywords(keywords, limit=20, **sparql_kw)
+    if not keywords:
+        return build_context_fixed(**sparql_kw)
+    entities = fetch_entities_by_keywords(keywords, limit=ENTITY_LIMIT, **sparql_kw)
     relationships = fetch_relationships_for_question(
         entities, keywords, limit=RELATIONSHIP_LIMIT, **sparql_kw
     )
     if not entities and not relationships:
-        return build_context_fixed(**sparql_kw)
+        return CONTEXT_NO_MATCH
     return _format_context(entities, relationships)
 
 
@@ -403,19 +460,22 @@ def main() -> None:
         print(f"  Ошибка запроса 1.2.3: {e}", file=sys.stderr)
     print()
 
-    # Проверка 1.2.4: интеграция и fallback
+    # Проверка 1.2.4: интеграция и fallback (3.2: абракадабра → CONTEXT_NO_MATCH; пустые ключи → fixed)
     print("—" * 50)
     print("1.2.4 build_context_by_question и fallback (проверка)\n")
     try:
         ctx_match = build_context_by_question("Кто такой Alice Smith?")
-        ctx_fallback = build_context_by_question("абракадабра")
+        ctx_nomatch = build_context_by_question("абракадабра")
+        ctx_fallback = build_context_by_question("а")
         fixed = build_context_fixed()
         if "ALICE_SMITH" in ctx_match and "=== Сущности ===" in ctx_match:
             print("  Вопрос с совпадениями: контекст содержит релевантные сущности/связи.")
-        if "=== Сущности ===" in ctx_fallback and len(ctx_fallback) > 100:
-            print("  Вопрос без совпадений (абракадабра): использован fallback, контекст — фиксированная выборка.")
-        if len(ctx_fallback) >= len(fixed) * 0.9:
-            print("  Проверка 1.2.4 пройдена: fallback даёт фиксированную выборку.")
+        if "совпадений" in ctx_nomatch and "не найдено" in ctx_nomatch:
+            print("  Вопрос без совпадений (абракадабра): CONTEXT_NO_MATCH, не маскирует retrieval.")
+        if len(ctx_fallback) >= len(fixed) * 0.9 and "=== Сущности ===" in ctx_fallback:
+            print("  Пустые ключевые слова («а»): fallback — фиксированная выборка.")
+        if "совпадений" in ctx_nomatch and len(ctx_fallback) >= len(fixed) * 0.9:
+            print("  Проверка 1.2.4 пройдена: fallback только при пустых ключах; иначе CONTEXT_NO_MATCH.")
     except Exception as e:
         print(f"  Ошибка 1.2.4: {e}", file=sys.stderr)
     print()
@@ -437,12 +497,18 @@ def main() -> None:
             else:
                 print(f"  «{question}» → в контексте нет {expected_entity} (проверьте граф).")
                 all_ok = False
-        ctx_fallback = build_context_by_question("абракадабра")
+        ctx_nomatch = build_context_by_question("абракадабра")
+        ctx_fallback = build_context_by_question("а")
         fixed = build_context_fixed()
-        if len(ctx_fallback) >= len(fixed) * 0.9 and "=== Сущности ===" in ctx_fallback:
-            print("  «абракадабра» → fallback, контекст — фиксированная выборка.")
+        if "совпадений" in ctx_nomatch and "не найдено" in ctx_nomatch:
+            print("  «абракадабра» → CONTEXT_NO_MATCH (ключи есть, совпадений нет).")
         else:
-            print("  «абракадабра» → fallback не сработал как ожидалось.")
+            print("  «абракадабра» → ожидался CONTEXT_NO_MATCH.")
+            all_ok = False
+        if len(ctx_fallback) >= len(fixed) * 0.9 and "=== Сущности ===" in ctx_fallback:
+            print("  «а» (пустые ключи) → fallback, фиксированная выборка.")
+        else:
+            print("  «а» → fallback не сработал как ожидалось.")
             all_ok = False
         if all_ok:
             print("  Проверка 1.2.5 пройдена: контекст релевантен вопросу; при отсутствии совпадений — fallback.")

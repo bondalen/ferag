@@ -45,11 +45,16 @@ def graphrag_to_rdf(root_dir: Path, output_path: Path) -> Path:
     from rdflib.namespace import RDF
 
     FERAG = Namespace("http://example.org/ferag#")
+    # Маппинг типов GraphRAG → ferag# (план 26-0227-1338, шаг 2.2)
     type_map = {
         "PERSON": FERAG.Person,
         "ORGANIZATION": FERAG.Organization,
         "EVENT": FERAG.Event,
         "GEO": FERAG.Location,
+        "LOCATION": FERAG.Location,  # альтернативное имя в parquet
+        "CONCEPT": FERAG.Thing,
+        "TECHNOLOGY": FERAG.Thing,
+        "DATE": FERAG.Event,
     }
 
     g = Graph()
@@ -66,8 +71,10 @@ def graphrag_to_rdf(root_dir: Path, output_path: Path) -> Path:
         local = slug(title)
         uri = FERAG[local]
         g.add((uri, RDF.type, type_map.get(str(row["type"]).upper(), FERAG.Thing)))
-        if pd.notna(row.get("description")) and str(row["description"]).strip():
-            g.add((uri, FERAG.description, Literal(str(row["description"]).strip())))
+        # Описание: из parquet или fallback на title, чтобы сущность была находима по ключевым словам
+        raw_desc = row.get("description")
+        desc = str(raw_desc).strip() if pd.notna(raw_desc) and str(raw_desc).strip() else title
+        g.add((uri, FERAG.description, Literal(desc)))
 
     for _, row in rels_df.iterrows():
         src = str(row["source"]).strip()
@@ -76,14 +83,14 @@ def graphrag_to_rdf(root_dir: Path, output_path: Path) -> Path:
             continue
         from_uri = FERAG[slug(src)]
         to_uri = FERAG[slug(tgt)]
-        desc = str(row.get("description", "") or "").strip()
+        raw_desc = row.get("description", "") or ""
+        desc = str(raw_desc).strip() if raw_desc else f"{src} — {tgt}"
         weight = row.get("weight")
         b = BNode()
         g.add((b, RDF.type, FERAG.Relationship))
         g.add((b, FERAG["from"], from_uri))
         g.add((b, FERAG["to"], to_uri))
-        if desc:
-            g.add((b, FERAG.description, Literal(desc)))
+        g.add((b, FERAG.description, Literal(desc)))
         if pd.notna(weight):
             g.add((b, FERAG.weight, Literal(float(weight))))
 

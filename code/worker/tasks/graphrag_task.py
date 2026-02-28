@@ -57,8 +57,8 @@ def _write_settings_yaml(work_dir: Path, settings_content: str, llm_api_url: str
 @celery.task(
     bind=True,
     name="worker.tasks.graphrag_task.run_graphrag",
-    time_limit=3600,
-    soft_time_limit=3600,
+    time_limit=7200,   # 2 ч — graphrag index может долго работать с LLM
+    soft_time_limit=7200,
 )
 def run_graphrag(
     self,
@@ -98,7 +98,7 @@ def run_graphrag(
             ["graphrag", "index", "--root", str(work_dir), "--skip-validation"],
             check=True,
             cwd=str(work_dir),
-            timeout=3600,
+            timeout=7200,  # 2 ч — индексация с LLM может занимать долго
             env={**__import__("os").environ, "PYTHONPATH": ":".join(sys.path)},
         )
 

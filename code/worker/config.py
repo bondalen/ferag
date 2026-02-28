@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     fuseki_user: str
     fuseki_password: str
     # LLM (LM Studio или OpenAI-совместимый)
-    llm_api_url: str = "http://host.docker.internal:41234/v1"
+    llm_api_url: str = "http://host.docker.internal:1234/v1"
     llm_model: str = "lmstudio-community/Meta-Llama-3.3-70B-Instruct-UDLQ4_K_M"
     # Базовый каталог рабочих файлов циклов
     work_dir: Path = Path("/tmp/ferag")

@@ -472,7 +472,7 @@ MillenniumDB **НЕ поддерживает OWL/RDFS inference** (логиче�
 
 2. **Один контейнер на cr-ubu:** FastAPI и Redis объединены в один Docker-контейнер через `supervisord` — экономия RAM (4 GB на cr-ubu), один `docker-compose.yml` с одной секцией `services`.
 
-3. **Экзотические порты (диапазон 43000–47999):** FastAPI 47821, Redis 47379, PostgreSQL 45432, Fuseki 43030, LM Studio 41234. Исключают конфликты с существующими сервисами ontoline.ru.
+3. **Экзотические порты (диапазон 43000–47999):** FastAPI 47821, Redis 47379, PostgreSQL 45432, Fuseki 43030; LM Studio — порт 1234. Исключают конфликты с существующими сервисами ontoline.ru.
 
 4. **URL-схема:** все элементы ferag под `/ferag/` — SPA (`/ferag/`), REST API (`/ferag/api/`), WebSocket (`/ferag/ws/`). Корень ontoline.ru не затрагивается.
 
@@ -503,7 +503,7 @@ MillenniumDB **НЕ поддерживает OWL/RDFS inference** (логиче�
 4. **Backend расширен:** `POST /rags/{id}/upload`, WebSocket `/ws/tasks/{id}`, `POST /rags/{id}/cycles/{id}/approve`, `POST /rags/{id}/chat`.
 
 5. **Исправления в процессе финальной проверки:**
-   - `deploy/nb-win/docker-compose.yml`: порт LM Studio `41234 → 1234`; добавлен volume `/tmp/ferag:/tmp/ferag` для shared work dir;
+   - `deploy/nb-win/docker-compose.yml`: порт LM Studio 1234; добавлен volume `/tmp/ferag:/tmp/ferag` для shared work dir;
    - `code/worker/tasks/base.py`: сигнатура `on_chain_failure` исправлена на `(request, exc, traceback)`;
    - `code/worker/tasks/graphrag_task.py`: `_prepare_work_dir` — пропуск `shutil.copy2` при src==dst; `_write_settings_yaml` — поддержка схемы graphrag 3.x (`completion_models`); флаг `--skip-validation`;
    - `graphrag-test/settings.yaml`: переписан под graphrag 3.0.2 — `completion_models`, `embedding_models`, `cache.type: none`, `embed_text.names: []`, `max_tokens: 4096`, `max_gleanings: 0`;
@@ -554,6 +554,20 @@ MillenniumDB **НЕ поддерживает OWL/RDFS inference** (логиче�
 3. **Документация:** обновлены PROJECT.md (раздел «Текущий статус и следующий рубеж»), PROJECT-004-chat-dialogue.md (цели и краткое резюме сегмента чата), PROJECT-005-frontend-visualization.md (зависимость экранов визуализации от стабильности чата), TASKS.md (уточнено, что 9.13 завершает сегмент после улучшения retrieval и контекста диалога).
 
 **Задачи:** Блок 6 (улучшение RAG и retrieval), Блок 9 (9.11, 9.12, 9.13).
+
+---
+
+## 2026-02-27 — Доработки загрузки и индексации: документация
+
+**Событие:** Зафиксированы доработки сегмента загрузки и индексации: отображение прогресса этапами, лимиты времени и оценка при старте, предупреждение о таймауте, отмена задачи пользователем, накопление статистики для прогноза времени. Полное описание и порядок разработки перенесены в документацию проекта (PROJECT-004), а не в планы чатов.
+
+**Решения:**
+- Источник истины — раздел «Загрузка и индексация: доработки» в [PROJECT-004](../project/PROJECT-004.md) (разд. 9). В планах чатов — только ссылки на эту документацию и детализация задач под конкретный чат.
+- В PROJECT.md добавлен пункт о запланированных доработках загрузки/индексации со ссылкой на PROJECT-004. В PROJECT-004 добавлен разд. 9 с описанием функционала и порядком разработки (шаги 1–4, задачи 9.14–9.17). В TASKS.md добавлены задачи 9.14–9.17.
+
+**Задачи:** Блок 9 (9.14–9.17).
+
+**Чат:** План 26-0227-1338 — обсуждение и уточнение предложений по документации.
 
 ---
 

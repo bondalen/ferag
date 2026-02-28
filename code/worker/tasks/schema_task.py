@@ -10,8 +10,8 @@ from worker.tasks.base import get_db_session, get_redis, publish_status, update_
 @celery.task(
     bind=True,
     name="worker.tasks.schema_task.run_schema_induction",
-    time_limit=3600,
-    soft_time_limit=3600,
+    time_limit=7200,   # 2 ч — Schema Induction с LLM может занимать долго
+    soft_time_limit=7200,
 )
 def run_schema_induction(
     self,

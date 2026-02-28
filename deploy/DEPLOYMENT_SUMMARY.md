@@ -37,7 +37,7 @@
 | **postgres** | Docker   | 10.7.0.3:**45432**         | ferag_app + ferag_projections     |
 | **fuseki**   | Docker   | 127.0.0.1:**43030**        | RDF/SPARQL (источник истины)      |
 | **worker**   | Docker   | —                          | Celery (GraphRAG + RAG)           |
-| **LM Studio**| Windows  | localhost:**41234**        | Llama 3.3 70B Q4_K_M             |
+| **LM Studio**| Windows  | localhost:**1234**        | Llama 3.3 70B Q4_K_M             |
 
 **Три контейнера** (`postgres`, `fuseki`, `worker`). LM Studio — нативно на Windows.  
 **Файл:** `deploy/nb-win/docker-compose.yml`
@@ -61,7 +61,7 @@ cr-ubu ferag-контейнер:
 nb-win (WireGuard 10.7.0.3):
     ├── postgres:45432 ← backend (из cr-ubu через WireGuard)
     ├── fuseki:43030   ← worker (внутри Docker-сети nb-win)
-    └── LM Studio:41234 ← worker (host.docker.internal)
+    └── LM Studio:1234 ← worker (host.docker.internal)
 ```
 
 ---
@@ -347,8 +347,8 @@ docker-compose up -d worker
 Нужен только для сценариев с вызовом LLM (RAG-ответы). Без него веб-интерфейс, авторизация, CRUD и постановка задач в очередь работают; задачи, требующие LLM, будут падать или ждать, пока LM Studio не запустят.
 
 - Запустить LM Studio в Windows.
-- Загрузить модель, включить сервер (порт 41234 в настройках).
-- Проверка из WSL: `curl http://localhost:41234/v1/models`.
+- Загрузить модель, включить сервер (порт 1234 в настройках).
+- Проверка из WSL: `curl http://localhost:1234/v1/models`.
 
 ### Итоговая схема порядка
 
@@ -357,7 +357,7 @@ docker-compose up -d worker
 2. nb-win:  docker-compose up -d postgres fuseki
 3. cr-ubu:  docker-compose up -d
 4. nb-win:  docker-compose up -d worker
-5. (по необходимости) Windows: LM Studio, сервер на :41234
+5. (по необходимости) Windows: LM Studio, сервер на :1234
 ```
 
 После шагов 1–4 пользователь может открыть `https://ontoline.ru/ferag/`, войти и пользоваться приложением. Функции с LLM заработают после шага 5.
@@ -424,7 +424,7 @@ docker-compose up -d worker
 | Redis      | 47379 | 6379              |
 | PostgreSQL | 45432 | 5432              |
 | Fuseki     | 43030 | 3030              |
-| LM Studio  | 41234 | 1234              |
+| LM Studio  | 1234 | 1234              |
 
 ---
 

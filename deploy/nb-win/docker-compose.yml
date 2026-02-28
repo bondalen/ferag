@@ -1,5 +1,5 @@
 # nb-win: 3 постоянных контейнера (postgres, fuseki, worker)
-# LM Studio на Windows (не в Docker) — порт 41234
+# LM Studio на Windows (не в Docker) — порт 1234
 # PostgreSQL слушает на WireGuard IP 10.7.0.3:45432
 # Fuseki слушает только внутри Docker-сети (порт 43030)
 

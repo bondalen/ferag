@@ -18,7 +18,7 @@
 | **postgres**| Docker    | 10.7.0.3:45432          | ferag_app + ferag_projections     |
 | **fuseki**  | Docker    | 127.0.0.1:43030         | RDF/SPARQL (источник истины)      |
 | **worker**  | Docker    | —                       | Celery (GraphRAG + RAG задачи)    |
-| **LM Studio**| Windows  | localhost:41234         | Llama 3.3 70B                     |
+| **LM Studio**| Windows  | localhost:1234         | Llama 3.3 70B                     |
 
 **3 контейнера, 1 файл docker-compose.yml**
 
@@ -64,7 +64,7 @@ deploy/
 1. **nb-win:** поднять PostgreSQL и Fuseki → `docker-compose up -d postgres fuseki` (или сразу `docker-compose up -d`).
 2. **cr-ubu:** поднять контейнер ferag (FastAPI + Redis) → `docker-compose up -d`.
 3. **nb-win:** поднять worker → `docker-compose up -d worker` (если не поднимали всё одной командой).
-4. **По желанию:** на Windows запустить LM Studio (порт 41234) — нужен для RAG/LLM-ответов.
+4. **По желанию:** на Windows запустить LM Studio (порт 1234) — нужен для RAG/LLM-ответов.
 
 Предварительно: туннель WireGuard, Nginx с конфигом ferag, frontend в `/var/www/ferag/`. Подробно — в [DEPLOYMENT_SUMMARY.md](DEPLOYMENT_SUMMARY.md#порядок-запуска-приложения).
 
@@ -134,7 +134,7 @@ curl http://10.7.0.3:43030  # Fuseki (если открыт наружу — у�
 | Redis         | cr-ubu  | 47379 | 10.7.0.1 (WireGuard) |
 | PostgreSQL    | nb-win  | 45432 | 10.7.0.3 (WireGuard) |
 | Fuseki        | nb-win  | 43030 | localhost nb-win     |
-| LM Studio     | nb-win  | 41234 | localhost nb-win     |
+| LM Studio     | nb-win  | 1234 | localhost nb-win     |
 
 ---
 
@@ -170,6 +170,6 @@ redis-cli -h 10.7.0.1 -p 47379 ping
 
 ### LM Studio недоступен из worker
 ```bash
-docker exec ferag-worker curl http://host.docker.internal:41234/v1/models
+docker exec ferag-worker curl http://host.docker.internal:1234/v1/models
 # Если не работает — network_mode: host для worker в docker-compose.yml
 ```
